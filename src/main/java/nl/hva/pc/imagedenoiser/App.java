@@ -50,7 +50,7 @@ public class App {
         fileHelper.CreateFolder("resources/image_dataset/output_images");
 
         class DenoiseImage extends Thread {
-            public synchronized void denoise() {
+            public void run() {
                 // Traverse the directory to retrieve the images.
                 try (Stream<Path> paths = Files.walk(Paths.get("resources/image_dataset/input_images"))) {
                     Stopwatch stopwatch = new Stopwatch();
@@ -89,15 +89,25 @@ public class App {
             }
         }
         DenoiseImage thread1 = new DenoiseImage();
+        DenoiseImage thread2 = new DenoiseImage();
         System.out.println("State for thread1 before start: " + thread1.getState());
+        System.out.println("State for thread2 before start: " + thread2.getState());
         System.out.println("Is alive for thread1 before start: " + thread1.isAlive());
+        System.out.println("Is alive for thread2 before start: " + thread2.isAlive());
 
         thread1.start();
+        thread2.start();
         System.out.println("State for thread1 after start: " + thread1.getState());
+        System.out.println("State for thread2 after start: " + thread2.getState());
         System.out.println("Is alive for thread1 after start: " + thread1.isAlive());
+        System.out.println("Is alive for thread2 after start: " + thread2.isAlive());
 
-        thread1.denoise();
-        System.out.println("State for thread1 after denoising: " + thread1.getState());
-        System.out.println("Is alive for thread1 after denoising: " + thread1.isAlive());
+        thread1.join();
+        thread2.join();
+
+        System.out.println("State for thread1 after joining: " + thread1.getState());
+        System.out.println("State for thread2 after joining: " + thread2.getState());
+        System.out.println("Is alive for thread1 after joining: " + thread1.isAlive());
+        System.out.println("Is alive for thread2 after joining: " + thread2.isAlive());
     }
 }
