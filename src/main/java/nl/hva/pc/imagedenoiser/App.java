@@ -51,12 +51,15 @@ public class App {
             try (Stream<Path> paths = Files.walk(Paths.get("resources/image_dataset/input_images"))) {
                 Stopwatch stopwatch = new Stopwatch();
                 paths.forEach((pathToImage) -> {
+                    // Reset stopwatch
+                    stopwatch.start();
                     String nameOfImage = pathToImage.toString().substring(pathToImage.toString().lastIndexOf("/") + 1);
                     if (nameOfImage.substring(nameOfImage.lastIndexOf(".") + 1).toLowerCase().matches("jpg|png")) {
                         // Retrieve the correct file extension from input
                         String target = targetToReplace + "." + nameOfImage.substring(nameOfImage.lastIndexOf(".") + 1);
                         String replacement = replacementText + "_" + templateWindowSize + "_" + wsearchWindowSize + "."
                                 + nameOfImage.substring(nameOfImage.lastIndexOf(".") + 1);
+                        String outputImageName = nameOfImage.replace(target, replacement);
 
                         Mat source = Imgcodecs.imread(pathToImage.toString(), Imgcodecs.CV_LOAD_IMAGE_COLOR);
                         Mat destination = new Mat(source.rows(), source.cols(), source.type());
@@ -64,10 +67,12 @@ public class App {
                         Photo.fastNlMeansDenoisingColored(source, destination, 3, 3, templateWindowSize,
                                 wsearchWindowSize);
                         Imgcodecs.imwrite("resources/image_dataset/output_images/"
-                                + nameOfImage.replace(target, replacement), destination);
+                                + outputImageName, destination);
+                        
                         System.out.println("It took the system "
-                                + TimeUnit.SECONDS.convert(stopwatch.elapsedTime(), TimeUnit.NANOSECONDS)
-                                + " seconds to denoise the image");
+                                + TimeUnit.MILLISECONDS.convert(stopwatch.elapsedTime(), TimeUnit.NANOSECONDS)
+                                + " milliseconds to denoise the image " + nameOfImage
+                                + ". Output image has been saved with the name " + outputImageName);
                     } else {
                         System.out.println(nameOfImage + " is not an image with the following extensions: .jpg | .png");
                     }
