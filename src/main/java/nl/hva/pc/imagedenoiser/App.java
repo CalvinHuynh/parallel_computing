@@ -5,7 +5,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
+import java.util.Map.Entry;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
@@ -20,14 +25,10 @@ import org.opencv.photo.Photo;
  * @author Ramon Gill 500733062
  */
 public class App {
-    public static void main(String[] args) throws IOException {
-        FileHelper fileHelper = new FileHelper();
-        List<Long> longList = new ArrayList<Long>();
+    private static HashMap<Integer, Long> RunDenoiser(String inputPath, String outputPath, Boolean showAllOutput) {
 
-        // TODO implement file download to keep the project size small
-        // FileDownload fileDownload = new FileDownload();
-        // fileDownload.DownloadWithJavaNIO("https://drive.google.com/uc?export=download&confirm=YDo9&id=1invDcT-fqGNWRQI4R2b8MwoZa78T2JGK",
-        // "downloaded.zip");
+        FileHelper fileHelper = new FileHelper();
+        HashMap<Integer, Long> idAndTimeMap = new HashMap<>();
 
         /**
          * This function unzips the supplied image_dataset.zip to the location specified
@@ -47,14 +48,16 @@ public class App {
         // Loads in the OpenCV library
         nu.pattern.OpenCV.loadShared();
         // Creates a folder for the output
-        fileHelper.CreateFolder("resources/image_dataset/output_images");
+        fileHelper.CreateFolder(outputPath);
 
         // Traverse the directory to retrieve the images.
-        try (Stream<Path> paths = Files.walk(Paths.get("resources/image_dataset/input_images"))) {
+        try (Stream<Path> paths = Files.walk(Paths.get(inputPath))) {
             Stopwatch stopwatch = new Stopwatch();
             paths.forEach((pathToImage) -> {
                 String nameOfImage = pathToImage.toString().substring(pathToImage.toString().lastIndexOf("/") + 1);
                 if (nameOfImage.substring(nameOfImage.lastIndexOf(".") + 1).toLowerCase().matches("jpg|png")) {
+                    int positionOfUnderscore = nameOfImage.indexOf("_");
+                    int idOfImage = Integer.parseInt(nameOfImage.substring(0, positionOfUnderscore));
                     // Retrieve the correct file extension from input
                     String target = targetToReplace + "." + nameOfImage.substring(nameOfImage.lastIndexOf(".") + 1);
                     String replacement = replacementText + "_" + templateWindowSize + "_" + wsearchWindowSize + "."
@@ -63,26 +66,56 @@ public class App {
 
                     // Reset stopwatch
                     stopwatch.start();
+                    // Loads image from path
                     Mat source = Imgcodecs.imread(pathToImage.toString(), Imgcodecs.CV_LOAD_IMAGE_COLOR);
                     Mat destination = new Mat(source.rows(), source.cols(), source.type());
                     destination = source;
                     Photo.fastNlMeansDenoisingColored(source, destination, 3, 3, templateWindowSize, wsearchWindowSize);
-                    Imgcodecs.imwrite("resources/image_dataset/output_images/" + outputImageName, destination);
+                    Imgcodecs.imwrite(outputPath + outputImageName, destination);
                     long elapsedTime = stopwatch.elapsedTime();
-                    System.out.println(
-                            "It took the system " + TimeUnit.MILLISECONDS.convert(elapsedTime, TimeUnit.NANOSECONDS)
-                                    + " milliseconds to denoise the image " + nameOfImage
-                                    + ". Output image has been saved with the name " + outputImageName);
-                    longList.add(elapsedTime);
+                    if (showAllOutput) {
+                        System.out.println(
+                                "It took the system " + TimeUnit.MILLISECONDS.convert(elapsedTime, TimeUnit.NANOSECONDS)
+                                        + " milliseconds to denoise the image " + nameOfImage
+                                        + ". Output image has been saved with the name " + outputImageName);
+                    }
+                    idAndTimeMap.put(idOfImage, elapsedTime);
                 } else {
-                    System.out.println(nameOfImage + " is not an image with the following extensions: .jpg | .png");
+                    if (showAllOutput) {
+                        System.out.println(nameOfImage + " is not an image with the following extensions: .jpg | .png");
+                    }
                 }
             });
         } catch (IOException e) {
             e.printStackTrace();
         }
-        long totalTimeTaken = longList.stream().mapToLong(Long::longValue).sum();
+        long totalTimeTaken = 0l;
+        for (Long time : idAndTimeMap.values()) {
+            totalTimeTaken += time;
+        }
         System.out.println("Total time taken: " + TimeUnit.MILLISECONDS.convert(totalTimeTaken, TimeUnit.NANOSECONDS)
                 + " milliseconds.");
+        return idAndTimeMap;
+    };
+
+    public static void main(String[] args) throws IOException {
+
+        // TODO implement file download to keep the project size small
+        // FileDownload fileDownload = new FileDownload();
+        // fileDownload.DownloadWithJavaNIO("https://drive.google.com/uc?export=download&confirm=YDo9&id=1invDcT-fqGNWRQI4R2b8MwoZa78T2JGK",
+        // "downloaded.zip");
+
+        for (int i = 0; i < 1; i++) {
+            System.out.println("Currently on run " + i+1);
+            HashMap<Integer, Long> hashMap = RunDenoiser(
+                "resources/image_dataset/input_images", "resources/image_dataset/output_images/", false);
+            Map<Integer, Long> sortedMap = new TreeMap<>(Collections.reverseOrder());
+            sortedMap.putAll(hashMap);
+            for (Entry<Integer, Long> entry: sortedMap.entrySet()) {
+                int id = entry.getKey();
+                long timeTaken = TimeUnit.MILLISECONDS.convert(entry.getValue(), TimeUnit.NANOSECONDS);
+                System.out.println(id + "\t" + timeTaken);
+            }
+        }
     }
 }
