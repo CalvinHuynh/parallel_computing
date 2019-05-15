@@ -13,3 +13,4 @@ target/
 .settings/
 .vscode/
 resources/
+*.zip
