@@ -18,24 +18,29 @@ public class App {
 
     public static void main(String[] args) throws IOException {
 
-        Denoise denoise = new Denoise();
+        Image image = new Image();
+        FileUtility fileHelper = new FileUtility();
+
+        fileHelper.Unzip("image_dataset_10.zip", "resources/");
+
+        image.ImageSplitter();
 
         // TODO implement file download to keep the project size small
         // FileDownload fileDownload = new FileDownload();
         // fileDownload.DownloadWithJavaNIO("https://drive.google.com/uc?export=download&confirm=YDo9&id=1invDcT-fqGNWRQI4R2b8MwoZa78T2JGK",
         // "downloaded.zip");
 
-        for (int i = 0; i < 1; i++) {
-            System.out.println("Currently on run " + i+1);
-            HashMap<Integer, Long> hashMap = denoise.RunDenoiser(
-                "image_dataset_10.zip","resources/image_dataset_10/input_images", "resources/image_dataset_10/output_images/", true);
-            Map<Integer, Long> sortedMap = new TreeMap<>(Collections.reverseOrder());
-            sortedMap.putAll(hashMap);
-            for (Entry<Integer, Long> entry: sortedMap.entrySet()) {
-                int id = entry.getKey();
-                long timeTaken = TimeUnit.MILLISECONDS.convert(entry.getValue(), TimeUnit.NANOSECONDS);
-                System.out.println(id + "\t" + timeTaken);
-            }
-        }
+        // for (int i = 0; i < 1; i++) {
+        //     System.out.println("Currently on run " + (i+1));
+        //     HashMap<Integer, Long> hashMap = image.RunDenoiser(
+        //         "resources/image_dataset_10/input_images", "resources/image_dataset_10/output_images/", true);
+        //     Map<Integer, Long> sortedMap = new TreeMap<>(Collections.reverseOrder());
+        //     sortedMap.putAll(hashMap);
+        //     for (Entry<Integer, Long> entry: sortedMap.entrySet()) {
+        //         int id = entry.getKey();
+        //         long timeTaken = TimeUnit.MILLISECONDS.convert(entry.getValue(), TimeUnit.NANOSECONDS);
+        //         System.out.println(id + "\t" + timeTaken);
+        //     }
+        // }
     }
 }

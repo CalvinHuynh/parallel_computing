@@ -7,7 +7,7 @@ import java.nio.channels.Channels;
 import java.nio.channels.FileChannel;
 import java.nio.channels.ReadableByteChannel;
 
-public class FileDownload {
+public class Download {
 
     /**
      * Downloads a file without buffering the data into the application memory.

@@ -13,7 +13,7 @@ import java.util.Enumeration;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
-public class FileHelper {
+public class FileUtility {
 
     /**
      * Creates a folder at the root of this directory
@@ -36,14 +36,14 @@ public class FileHelper {
      * Function to unzip a zip file to a destination
      * Code is taken from the following source:
      * https://howtodoinjava.com/java/io/unzip-file-with-subdirectories/
-     * @param zipFileName name and location of the zip file
+     * @param zipPath name and location of the zip file
      * @param destination destination of the unzipped content
      */
-    public void Unzip(String zipFileName, String destination) {
+    public void Unzip(String zipPath, String destination) {
         if (destination == null || destination.trim().isEmpty()) {
             destination = "resources/";
         }
-        try (ZipFile file = new ZipFile(zipFileName)) {
+        try (ZipFile file = new ZipFile(zipPath)) {
             FileSystem fileSystem = FileSystems.getDefault();
             // Get file entries
             Enumeration<? extends ZipEntry> entries = file.entries();
