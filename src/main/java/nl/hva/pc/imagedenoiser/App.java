@@ -22,8 +22,10 @@ public class App {
         FileUtility fileHelper = new FileUtility();
 
         fileHelper.Unzip("image_dataset_10.zip", "resources/");
+        fileHelper.CreateFolder("resources/image_dataset_10/splitted_images");
 
-        image.ImageSplitter();
+        image.ImageSplitter(false);
+        image.ImageMerger(false);
 
         // TODO implement file download to keep the project size small
         // FileDownload fileDownload = new FileDownload();

@@ -25,9 +25,12 @@ import org.opencv.photo.Photo;
 
 public class Image {
 
-    public void ImageSplitter() throws IOException {
+    // from
+    // http://kalanir.blogspot.com/2010/02/how-to-split-image-into-chunks-java.html
+    public void ImageSplitter(boolean deleteOriginal) throws IOException {
         File file = new File("resources/image_dataset_10/input_images/1_Canon5D2_bag_Real.JPG");
-        String fileName = file.getName().substring(file.getName().lastIndexOf("/") + 1);
+        String fileName = file.getName().substring(file.getName().lastIndexOf("/") + 1).substring(0,
+                file.getName().lastIndexOf("."));
         String fileExtension = file.getName().substring(file.getName().lastIndexOf(".") + 1).trim();
         FileInputStream fis = new FileInputStream(file);
         BufferedImage image = ImageIO.read(fis);
@@ -58,22 +61,94 @@ public class Image {
         case "jpeg":
             for (int i = 0; i < imgs.length; i++) {
                 ImageWriter writer = ImageIO.getImageWritersByFormatName("jpeg").next();
-                // Using ImageWriteParam to force the system to save jpegs using the highest quality setting
+                // Using ImageWriteParam to force the system to save jpegs using the highest
+                // quality setting
                 ImageWriteParam param = writer.getDefaultWriteParam();
                 param.setCompressionMode(ImageWriteParam.MODE_EXPLICIT); // Needed see javadoc
                 param.setCompressionQuality(1.0F); // Highest quality
                 writer.setOutput(new FileImageOutputStream(new File(
-                        "resources/image_dataset_10/input_images/" + fileName + "_" + i + "." + fileExtension)));
+                        "resources/image_dataset_10/splitted_images/" + fileName + "_" + i + "." + fileExtension)));
                 writer.write(null, new IIOImage(imgs[i], null, null), param);
             }
             break;
         default:
             for (int i = 0; i < imgs.length; i++) {
                 ImageIO.write(imgs[i], fileExtension, new File(
-                        "resources/image_dataset_10/input_images/" + fileName + "_" + i + "." + fileExtension));
+                        "resources/image_dataset_10/splitted_images/" + fileName + "_" + i + "." + fileExtension));
             }
         }
-        file.delete();
+
+        if (deleteOriginal) {
+            file.delete();
+        }
+    }
+
+    // from
+    // http://kalanir.blogspot.com/2010/02/how-to-merge-multiple-images-into-one.html
+    public void ImageMerger(boolean deleteOriginal) throws IOException {
+        int rows = 1; // we assume the no. of rows and cols are known and each chunk has equal width
+                      // and height
+        int cols = 2;
+        int chunks = rows * cols;
+        String fileExtension = "";
+        String fileName = "";
+
+        int chunkWidth, chunkHeight;
+        int type;
+        // fetching image files
+        File[] imgFiles = new File[chunks];
+        for (int i = 0; i < chunks; i++) {
+            imgFiles[i] = new File("resources/image_dataset_10/splitted_images/1_Canon5D2_bag_Real_" + i + ".JPG");
+            fileExtension = imgFiles[i].getName().substring(imgFiles[i].getName().lastIndexOf(".") + 1).trim();
+            fileName = imgFiles[i].getName().substring(imgFiles[i].getName().lastIndexOf("/") + 1).substring(0,
+                    imgFiles[i].getName().lastIndexOf("_"));
+        }
+        fileName = fileName + "_Merged";
+
+        // creating a bufferd image array from image files
+        BufferedImage[] buffImages = new BufferedImage[chunks];
+        for (int i = 0; i < chunks; i++) {
+            buffImages[i] = ImageIO.read(imgFiles[i]);
+        }
+        type = buffImages[0].getType();
+        chunkWidth = buffImages[0].getWidth();
+        chunkHeight = buffImages[0].getHeight();
+
+        // Initializing the final image
+        BufferedImage finalImg = new BufferedImage(chunkWidth * cols, chunkHeight * rows, type);
+
+        int num = 0;
+        for (int i = 0; i < rows; i++) {
+            for (int j = 0; j < cols; j++) {
+                finalImg.createGraphics().drawImage(buffImages[num], chunkWidth * j, chunkHeight * i, null);
+                num++;
+            }
+        }
+
+        switch (fileExtension.toLowerCase()) {
+        case "jpg":
+        case "jpeg":
+            ImageWriter writer = ImageIO.getImageWritersByFormatName("jpeg").next();
+            // Using ImageWriteParam to force the system to save jpegs using the highest
+            // quality setting
+            ImageWriteParam param = writer.getDefaultWriteParam();
+            param.setCompressionMode(ImageWriteParam.MODE_EXPLICIT); // Needed see javadoc
+            param.setCompressionQuality(1.0F); // Highest quality
+            writer.setOutput(new FileImageOutputStream(
+                    new File("resources/image_dataset_10/input_images/" + fileName + "." + fileExtension)));
+            writer.write(null, new IIOImage(finalImg, null, null), param);
+
+            break;
+        default:
+            ImageIO.write(finalImg, fileExtension,
+                    new File("resources/image_dataset_10/input_images/" + fileName + "." + fileExtension));
+        }
+
+        if (deleteOriginal) {
+            for (File imgFile : imgFiles) {
+                imgFile.delete();
+            }
+        }
     }
 
     /**
