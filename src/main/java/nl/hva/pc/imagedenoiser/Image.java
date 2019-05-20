@@ -9,7 +9,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashMap;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import javax.imageio.IIOImage;
@@ -24,7 +26,7 @@ import org.opencv.photo.Photo;
 
 public class Image {
 
-    // from
+    // Inspired by
     // http://kalanir.blogspot.com/2010/02/how-to-split-image-into-chunks-java.html
     public void ImageSplitter(String fileInputPath, boolean deleteOriginal) throws Exception {
         // Traverse the directory to retrieve the images.
@@ -33,11 +35,13 @@ public class Image {
                 File file = new File(pathToImage.toString());
                 String nameOfFile = pathToImage.toString().substring(pathToImage.toString().lastIndexOf("/") + 1);
                 if (nameOfFile.substring(nameOfFile.lastIndexOf(".") + 1).toLowerCase().matches("jpg|png")) {
-                    // String fileName = file.getName().substring(file.getName().lastIndexOf("/") + 1).substring(0,
-                    //         file.getName().lastIndexOf("."));
+                    // String fileName = file.getName().substring(file.getName().lastIndexOf("/") +
+                    // 1).substring(0,
+                    // file.getName().lastIndexOf("."));
                     String fileName = nameOfFile.substring(nameOfFile.lastIndexOf("/") + 1).substring(0,
                             nameOfFile.lastIndexOf("."));
-                    // String fileExtension = file.getName().substring(file.getName().lastIndexOf(".") + 1).trim();
+                    // String fileExtension =
+                    // file.getName().substring(file.getName().lastIndexOf(".") + 1).trim();
                     String fileExtension = nameOfFile.substring(nameOfFile.lastIndexOf(".") + 1).trim();
                     FileInputStream fis = null;
                     BufferedImage image = null;
@@ -101,72 +105,90 @@ public class Image {
         }
     }
 
-    // from
+    // Inspired by
     // http://kalanir.blogspot.com/2010/02/how-to-merge-multiple-images-into-one.html
     public void ImageMerger(String fileInputPath, boolean deleteOriginal) throws IOException {
-        int rows = 1; // we assume the no. of rows and cols are known and each chunk has equal width
-                      // and height
-        int cols = 2;
-        int chunks = rows * cols;
-        String fileExtension = "";
-        String fileName = "";
+        List<String> pathList = Files.walk(Paths.get(fileInputPath)).filter(Files::isRegularFile)
+                .map(result -> result.toString()).collect(Collectors.toList());
 
-        int chunkWidth, chunkHeight;
-        int type;
-        // fetching image files
-        File[] imgFiles = new File[chunks];
-        for (int i = 0; i < chunks; i++) {
-            imgFiles[i] = new File("resources/image_dataset_10/splitted_images/1_Canon5D2_bag_Real_" + i + ".JPG");
-            fileExtension = imgFiles[i].getName().substring(imgFiles[i].getName().lastIndexOf(".") + 1).trim();
-            fileName = imgFiles[i].getName().substring(imgFiles[i].getName().lastIndexOf("/") + 1).substring(0,
-                    imgFiles[i].getName().lastIndexOf("_"));
+        for (int i = 0; i < pathList.size(); i++) {
+            String fileExtension = pathList.get(i).substring(pathList.get(i).lastIndexOf(".") + 1).trim();
+            pathList.set(i, pathList.get(i).replaceAll("_\\d." + fileExtension, "." + fileExtension));
         }
-        fileName = fileName + "_Merged";
-
-        // creating a bufferd image array from image files
-        BufferedImage[] buffImages = new BufferedImage[chunks];
-        for (int i = 0; i < chunks; i++) {
-            buffImages[i] = ImageIO.read(imgFiles[i]);
+        List<String> dedupedList = pathList.stream().distinct().collect(Collectors.toList());
+        for (String path : dedupedList) {
+            System.out.println(path);
         }
-        type = buffImages[0].getType();
-        chunkWidth = buffImages[0].getWidth();
-        chunkHeight = buffImages[0].getHeight();
 
-        // Initializing the final image
-        BufferedImage finalImg = new BufferedImage(chunkWidth * cols, chunkHeight * rows, type);
+        dedupedList.forEach((filePath) -> {
+            try {
+                int rows = 1; // we assume the no. of rows and cols are known and each chunk has equal width
+                // and height
+                int cols = 2;
+                int chunks = rows * cols;
+                String fileExtension = "";
+                String fileName = "";
 
-        int num = 0;
-        for (int i = 0; i < rows; i++) {
-            for (int j = 0; j < cols; j++) {
-                finalImg.createGraphics().drawImage(buffImages[num], chunkWidth * j, chunkHeight * i, null);
-                num++;
+                int chunkWidth, chunkHeight;
+                int type;
+                // fetching image files
+                File[] imgFiles = new File[chunks];
+                for (int i = 0; i < chunks; i++) {
+                    fileExtension = filePath.substring(filePath.lastIndexOf(".") + 1).trim();
+                    imgFiles[i] = new File(filePath.substring(0, filePath.lastIndexOf('.')) + "_" + i + "." + fileExtension);
+                    fileName = imgFiles[i].getName().substring(imgFiles[i].getName().lastIndexOf("/") + 1).substring(0,
+                            imgFiles[i].getName().lastIndexOf("_"));
+                }
+                fileName = fileName + "_Merged";
+
+                // creating a bufferd image array from image files
+                BufferedImage[] buffImages = new BufferedImage[chunks];
+                for (int i = 0; i < chunks; i++) {
+                    buffImages[i] = ImageIO.read(imgFiles[i]);
+                }
+                type = buffImages[0].getType();
+                chunkWidth = buffImages[0].getWidth();
+                chunkHeight = buffImages[0].getHeight();
+
+                // Initializing the final image
+                BufferedImage finalImg = new BufferedImage(chunkWidth * cols, chunkHeight * rows, type);
+
+                int num = 0;
+                for (int i = 0; i < rows; i++) {
+                    for (int j = 0; j < cols; j++) {
+                        finalImg.createGraphics().drawImage(buffImages[num], chunkWidth * j, chunkHeight * i, null);
+                        num++;
+                    }
+                }
+
+                switch (fileExtension.toLowerCase()) {
+                case "jpg":
+                case "jpeg":
+                    ImageWriter writer = ImageIO.getImageWritersByFormatName("jpeg").next();
+                    // Using ImageWriteParam to force the system to save jpegs using the highest
+                    // quality setting
+                    ImageWriteParam param = writer.getDefaultWriteParam();
+                    param.setCompressionMode(ImageWriteParam.MODE_EXPLICIT); // Needed see javadoc
+                    param.setCompressionQuality(1.0F); // Highest quality
+                    writer.setOutput(new FileImageOutputStream(
+                            new File("resources/image_dataset_10/input_images/" + fileName + "." + fileExtension)));
+                    writer.write(null, new IIOImage(finalImg, null, null), param);
+
+                    break;
+                default:
+                    ImageIO.write(finalImg, fileExtension,
+                            new File("resources/image_dataset_10/input_images/" + fileName + "." + fileExtension));
+                }
+
+                if (deleteOriginal) {
+                    for (File imgFile : imgFiles) {
+                        imgFile.delete();
+                    }
+                }
+            } catch (Exception e) {
+                System.out.println(e);
             }
-        }
-
-        switch (fileExtension.toLowerCase()) {
-        case "jpg":
-        case "jpeg":
-            ImageWriter writer = ImageIO.getImageWritersByFormatName("jpeg").next();
-            // Using ImageWriteParam to force the system to save jpegs using the highest
-            // quality setting
-            ImageWriteParam param = writer.getDefaultWriteParam();
-            param.setCompressionMode(ImageWriteParam.MODE_EXPLICIT); // Needed see javadoc
-            param.setCompressionQuality(1.0F); // Highest quality
-            writer.setOutput(new FileImageOutputStream(
-                    new File("resources/image_dataset_10/input_images/" + fileName + "." + fileExtension)));
-            writer.write(null, new IIOImage(finalImg, null, null), param);
-
-            break;
-        default:
-            ImageIO.write(finalImg, fileExtension,
-                    new File("resources/image_dataset_10/input_images/" + fileName + "." + fileExtension));
-        }
-
-        if (deleteOriginal) {
-            for (File imgFile : imgFiles) {
-                imgFile.delete();
-            }
-        }
+        });
     }
 
     /**
