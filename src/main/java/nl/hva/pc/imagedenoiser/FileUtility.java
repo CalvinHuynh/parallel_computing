@@ -33,13 +33,15 @@ public class FileUtility {
     }
 
     /**
-     * Function to unzip a zip file to a destination
-     * Code is taken from the following source:
+     * Function to unzip a zip file to a destination Code is taken from the
+     * following source:
      * https://howtodoinjava.com/java/io/unzip-file-with-subdirectories/
-     * @param zipPath name and location of the zip file
-     * @param destination destination of the unzipped content
+     * 
+     * @param zipPath       name and location of the zip file
+     * @param destination   destination of the unzipped content
+     * @param showAllOutput Prints the intermediate output
      */
-    public void Unzip(String zipPath, String destination) {
+    public void Unzip(String zipPath, String destination, Boolean showAllOutput) {
         if (destination == null || destination.trim().isEmpty()) {
             destination = "resources/";
         }
@@ -61,7 +63,9 @@ public class FileUtility {
                 ZipEntry entry = entries.nextElement();
                 // If directory then create a new directory in uncompressed folder
                 if (entry.isDirectory()) {
-                    System.out.println("Creating Directory: " + uncompressedDirectory + entry.getName());
+                    if (showAllOutput) {
+                        System.out.println("Creating Directory: " + uncompressedDirectory + entry.getName());
+                    }
                     Files.createDirectories(fileSystem.getPath(uncompressedDirectory + entry.getName()));
                 }
                 // Else create the file
@@ -77,7 +81,9 @@ public class FileUtility {
                             fileOutput.write(bis.read());
                         }
                         fileOutput.close();
-                        System.out.println("Written: " + entry.getName());
+                        if (showAllOutput) {
+                            System.out.println("Written: " + entry.getName());
+                        }
                     } catch (Exception e) {
                         System.out.println(e);
                     }

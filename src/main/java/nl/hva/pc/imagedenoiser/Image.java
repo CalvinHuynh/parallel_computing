@@ -27,9 +27,11 @@ import org.opencv.photo.Photo;
 public class Image {
 
     /**
-     * Inspired by http://kalanir.blogspot.com/2010/02/how-to-split-image-into-chunks-java.html
+     * Inspired by
+     * http://kalanir.blogspot.com/2010/02/how-to-split-image-into-chunks-java.html
      * Splits the image by half
-     * @param fileInputPath folder of the images that you want to split
+     * 
+     * @param fileInputPath  folder of the images that you want to split
      * @param fileOutputPath output folder of the splitted images
      * @param deleteOriginal delete the original file
      * @throws Exception
@@ -107,9 +109,11 @@ public class Image {
     }
 
     /**
-     * Inspired by http://kalanir.blogspot.com/2010/02/how-to-merge-multiple-images-into-one.html
+     * Inspired by
+     * http://kalanir.blogspot.com/2010/02/how-to-merge-multiple-images-into-one.html
      * Merges the images created by the ImageSplitter function
-     * @param fileInputPath path to the folder containing the splitted images
+     * 
+     * @param fileInputPath  path to the folder containing the splitted images
      * @param fileOutputPath output path of the merged images
      * @param deleteOriginal delete the original file
      * @throws IOException
@@ -126,9 +130,6 @@ public class Image {
             pathList.set(i, pathList.get(i).replaceAll("_\\d." + fileExtension, "." + fileExtension));
         }
         List<String> dedupedList = pathList.stream().distinct().collect(Collectors.toList());
-        for (String path : dedupedList) {
-            System.out.println(path);
-        }
 
         dedupedList.forEach((filePath) -> {
             try {
@@ -216,7 +217,8 @@ public class Image {
         FileUtility fileHelper = new FileUtility();
         HashMap<String, Long> idAndTimeMap = new HashMap<>();
 
-        // These are the default parameters given by OpenCV for fastNlMeansDenoisingColored
+        // These are the default parameters given by OpenCV for
+        // fastNlMeansDenoisingColored
         int templateWindowSize = 7;
         int wsearchWindowSize = 21;
         String targetToReplace = "Real";
@@ -269,8 +271,10 @@ public class Image {
         for (Long time : idAndTimeMap.values()) {
             totalTimeTaken += time;
         }
-        System.out.println("Total time taken: " + TimeUnit.MILLISECONDS.convert(totalTimeTaken, TimeUnit.NANOSECONDS)
-                + " milliseconds.");
+        if (showAllOutput) {
+            System.out.println("Total time taken: "
+                    + TimeUnit.MILLISECONDS.convert(totalTimeTaken, TimeUnit.NANOSECONDS) + " milliseconds.");
+        }
         return idAndTimeMap;
     };
 }
