@@ -26,22 +26,25 @@ import org.opencv.photo.Photo;
 
 public class Image {
 
-    // Inspired by
-    // http://kalanir.blogspot.com/2010/02/how-to-split-image-into-chunks-java.html
-    public void ImageSplitter(String fileInputPath, boolean deleteOriginal) throws Exception {
+    /**
+     * Inspired by http://kalanir.blogspot.com/2010/02/how-to-split-image-into-chunks-java.html
+     * Splits the image by half
+     * @param fileInputPath folder of the images that you want to split
+     * @param fileOutputPath output folder of the splitted images
+     * @param deleteOriginal delete the original file
+     * @throws Exception
+     */
+    public void ImageSplitter(String fileInputPath, String fileOutputPath, boolean deleteOriginal) throws Exception {
+        FileUtility fileUtility = new FileUtility();
+        fileUtility.CreateFolder(fileOutputPath);
         // Traverse the directory to retrieve the images.
         try (Stream<Path> paths = Files.walk(Paths.get(fileInputPath))) {
             paths.forEach((pathToImage) -> {
                 File file = new File(pathToImage.toString());
                 String nameOfFile = pathToImage.toString().substring(pathToImage.toString().lastIndexOf("/") + 1);
                 if (nameOfFile.substring(nameOfFile.lastIndexOf(".") + 1).toLowerCase().matches("jpg|png")) {
-                    // String fileName = file.getName().substring(file.getName().lastIndexOf("/") +
-                    // 1).substring(0,
-                    // file.getName().lastIndexOf("."));
                     String fileName = nameOfFile.substring(nameOfFile.lastIndexOf("/") + 1).substring(0,
                             nameOfFile.lastIndexOf("."));
-                    // String fileExtension =
-                    // file.getName().substring(file.getName().lastIndexOf(".") + 1).trim();
                     String fileExtension = nameOfFile.substring(nameOfFile.lastIndexOf(".") + 1).trim();
                     FileInputStream fis = null;
                     BufferedImage image = null;
@@ -80,17 +83,15 @@ public class Image {
                                 ImageWriteParam param = writer.getDefaultWriteParam();
                                 param.setCompressionMode(ImageWriteParam.MODE_EXPLICIT); // Needed see javadoc
                                 param.setCompressionQuality(1.0F); // Highest quality
-                                writer.setOutput(
-                                        new FileImageOutputStream(new File("resources/image_dataset_10/splitted_images/"
-                                                + fileName + "_" + i + "." + fileExtension)));
+                                writer.setOutput(new FileImageOutputStream(
+                                        new File(fileOutputPath + "/" + fileName + "_" + i + "." + fileExtension)));
                                 writer.write(null, new IIOImage(imgs[i], null, null), param);
                             }
                             break;
                         default:
                             for (int i = 0; i < imgs.length; i++) {
                                 ImageIO.write(imgs[i], fileExtension,
-                                        new File("resources/image_dataset_10/splitted_images/" + fileName + "_" + i
-                                                + "." + fileExtension));
+                                        new File(fileOutputPath + "/" + fileName + "_" + i + "." + fileExtension));
                             }
                         }
 
@@ -105,9 +106,18 @@ public class Image {
         }
     }
 
-    // Inspired by
-    // http://kalanir.blogspot.com/2010/02/how-to-merge-multiple-images-into-one.html
-    public void ImageMerger(String fileInputPath, boolean deleteOriginal) throws IOException {
+    /**
+     * Inspired by http://kalanir.blogspot.com/2010/02/how-to-merge-multiple-images-into-one.html
+     * Merges the images created by the ImageSplitter function
+     * @param fileInputPath path to the folder containing the splitted images
+     * @param fileOutputPath output path of the merged images
+     * @param deleteOriginal delete the original file
+     * @throws IOException
+     */
+    public void ImageMerger(String fileInputPath, String fileOutputPath, boolean deleteOriginal) throws IOException {
+        FileUtility fileUtility = new FileUtility();
+        fileUtility.CreateFolder(fileOutputPath);
+
         List<String> pathList = Files.walk(Paths.get(fileInputPath)).filter(Files::isRegularFile)
                 .map(result -> result.toString()).collect(Collectors.toList());
 
@@ -135,7 +145,8 @@ public class Image {
                 File[] imgFiles = new File[chunks];
                 for (int i = 0; i < chunks; i++) {
                     fileExtension = filePath.substring(filePath.lastIndexOf(".") + 1).trim();
-                    imgFiles[i] = new File(filePath.substring(0, filePath.lastIndexOf('.')) + "_" + i + "." + fileExtension);
+                    imgFiles[i] = new File(
+                            filePath.substring(0, filePath.lastIndexOf('.')) + "_" + i + "." + fileExtension);
                     fileName = imgFiles[i].getName().substring(imgFiles[i].getName().lastIndexOf("/") + 1).substring(0,
                             imgFiles[i].getName().lastIndexOf("_"));
                 }
@@ -170,14 +181,14 @@ public class Image {
                     ImageWriteParam param = writer.getDefaultWriteParam();
                     param.setCompressionMode(ImageWriteParam.MODE_EXPLICIT); // Needed see javadoc
                     param.setCompressionQuality(1.0F); // Highest quality
-                    writer.setOutput(new FileImageOutputStream(
-                            new File("resources/image_dataset_10/input_images/" + fileName + "." + fileExtension)));
+                    writer.setOutput(
+                            new FileImageOutputStream(new File(fileOutputPath + "/" + fileName + "." + fileExtension)));
                     writer.write(null, new IIOImage(finalImg, null, null), param);
 
                     break;
                 default:
                     ImageIO.write(finalImg, fileExtension,
-                            new File("resources/image_dataset_10/input_images/" + fileName + "." + fileExtension));
+                            new File(fileOutputPath + "/" + fileName + "." + fileExtension));
                 }
 
                 if (deleteOriginal) {
@@ -194,19 +205,18 @@ public class Image {
     /**
      * The one method that does all the work
      * 
-     * @param inputPath     Path of the extracted images, the path starts with
-     *                      "/resources/.."
-     * @param outputPath    Path to write the denoised images to
-     * @param showAllOutput Prints the intermediate output
+     * @param fileInputPath  Path of the extracted images, the path starts with
+     *                       "/resources/.."
+     * @param fileOutputPath Path to write the denoised images to
+     * @param showAllOutput  Prints the intermediate output
      * @return
      */
-    public HashMap<Integer, Long> RunDenoiser(String inputPath, String outputPath, Boolean showAllOutput) {
+    public HashMap<String, Long> RunDenoiser(String fileInputPath, String fileOutputPath, Boolean showAllOutput) {
 
         FileUtility fileHelper = new FileUtility();
-        HashMap<Integer, Long> idAndTimeMap = new HashMap<>();
+        HashMap<String, Long> idAndTimeMap = new HashMap<>();
 
-        // These are the default parameters given by OpenCV for
-        // fastNlMeansDenoisingColored
+        // These are the default parameters given by OpenCV for fastNlMeansDenoisingColored
         int templateWindowSize = 7;
         int wsearchWindowSize = 21;
         String targetToReplace = "Real";
@@ -215,23 +225,20 @@ public class Image {
         // Loads in the OpenCV library
         nu.pattern.OpenCV.loadShared();
         // Creates a folder for the output
-        fileHelper.CreateFolder(outputPath);
+        fileHelper.CreateFolder(fileOutputPath);
 
         // Traverse the directory to retrieve the images.
-        try (Stream<Path> paths = Files.walk(Paths.get(inputPath))) {
+        try (Stream<Path> paths = Files.walk(Paths.get(fileInputPath))) {
             Stopwatch stopwatch = new Stopwatch();
             paths.forEach((pathToImage) -> {
                 // Retrieves name of image file
                 String nameOfImage = pathToImage.toString().substring(pathToImage.toString().lastIndexOf("/") + 1);
                 if (nameOfImage.substring(nameOfImage.lastIndexOf(".") + 1).toLowerCase().matches("jpg|png")) {
-                    int positionOfUnderscore = nameOfImage.indexOf("_");
-                    // Retrieves the number of the image at the first underscore
-                    int idOfImage = Integer.parseInt(nameOfImage.substring(0, positionOfUnderscore));
-                    // Retrieve the correct file extension from input
-                    String target = targetToReplace + "." + nameOfImage.substring(nameOfImage.lastIndexOf(".") + 1);
-                    String replacement = replacementText + "_" + templateWindowSize + "_" + wsearchWindowSize + "."
-                            + nameOfImage.substring(nameOfImage.lastIndexOf(".") + 1);
-                    String outputImageName = nameOfImage.replace(target, replacement);
+                    // Retrieves the number of the image at the first underscore and last underscore
+                    // to create an unique id
+                    String idOfImage = nameOfImage.substring(0, nameOfImage.indexOf("_")) + "_" + nameOfImage
+                            .substring(0, nameOfImage.indexOf(".")).substring(nameOfImage.lastIndexOf("_") + 1);
+                    String outputImageName = nameOfImage.replace(targetToReplace, replacementText);
 
                     // Reset stopwatch
                     stopwatch.start();
@@ -240,7 +247,7 @@ public class Image {
                     Mat destination = new Mat(source.rows(), source.cols(), source.type());
                     destination = source;
                     Photo.fastNlMeansDenoisingColored(source, destination, 3, 3, templateWindowSize, wsearchWindowSize);
-                    Imgcodecs.imwrite(outputPath + outputImageName, destination);
+                    Imgcodecs.imwrite(fileOutputPath + "/" + outputImageName, destination);
                     long elapsedTime = stopwatch.elapsedTime();
                     if (showAllOutput) {
                         System.out.println(
