@@ -1,7 +1,6 @@
 package nl.hva.pc.imagedenoiser;
 
 import java.awt.Graphics2D;
-import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.FileInputStream;
@@ -27,65 +26,84 @@ public class Image {
 
     // from
     // http://kalanir.blogspot.com/2010/02/how-to-split-image-into-chunks-java.html
-    public void ImageSplitter(boolean deleteOriginal) throws IOException {
-        File file = new File("resources/image_dataset_10/input_images/1_Canon5D2_bag_Real.JPG");
-        String fileName = file.getName().substring(file.getName().lastIndexOf("/") + 1).substring(0,
-                file.getName().lastIndexOf("."));
-        String fileExtension = file.getName().substring(file.getName().lastIndexOf(".") + 1).trim();
-        FileInputStream fis = new FileInputStream(file);
-        BufferedImage image = ImageIO.read(fis);
+    public void ImageSplitter(String fileInputPath, boolean deleteOriginal) throws Exception {
+        // Traverse the directory to retrieve the images.
+        try (Stream<Path> paths = Files.walk(Paths.get(fileInputPath))) {
+            paths.forEach((pathToImage) -> {
+                File file = new File(pathToImage.toString());
+                String nameOfFile = pathToImage.toString().substring(pathToImage.toString().lastIndexOf("/") + 1);
+                if (nameOfFile.substring(nameOfFile.lastIndexOf(".") + 1).toLowerCase().matches("jpg|png")) {
+                    // String fileName = file.getName().substring(file.getName().lastIndexOf("/") + 1).substring(0,
+                    //         file.getName().lastIndexOf("."));
+                    String fileName = nameOfFile.substring(nameOfFile.lastIndexOf("/") + 1).substring(0,
+                            nameOfFile.lastIndexOf("."));
+                    // String fileExtension = file.getName().substring(file.getName().lastIndexOf(".") + 1).trim();
+                    String fileExtension = nameOfFile.substring(nameOfFile.lastIndexOf(".") + 1).trim();
+                    FileInputStream fis = null;
+                    BufferedImage image = null;
+                    try {
+                        fis = new FileInputStream(file);
+                        image = ImageIO.read(fis);
 
-        int rows = 1; // You should decide the values for rows and cols variables
-        int cols = 2;
-        int chunks = rows * cols;
+                        int rows = 1; // You should decide the values for rows and cols variables
+                        int cols = 2;
+                        int chunks = rows * cols;
 
-        int chunkWidth = image.getWidth() / cols; // determines the chunk width and height
-        int chunkHeight = image.getHeight() / rows;
-        int count = 0;
-        BufferedImage imgs[] = new BufferedImage[chunks]; // Image array to hold image chunks
-        for (int x = 0; x < rows; x++) {
-            for (int y = 0; y < cols; y++) {
-                // Initialize the image array with image chunks
-                imgs[count] = new BufferedImage(chunkWidth, chunkHeight, image.getType());
+                        int chunkWidth = image.getWidth() / cols; // determines the chunk width and height
+                        int chunkHeight = image.getHeight() / rows;
+                        int count = 0;
+                        BufferedImage imgs[] = new BufferedImage[chunks]; // Image array to hold image chunks
+                        for (int x = 0; x < rows; x++) {
+                            for (int y = 0; y < cols; y++) {
+                                // Initialize the image array with image chunks
+                                imgs[count] = new BufferedImage(chunkWidth, chunkHeight, image.getType());
 
-                // draws the image chunk
-                Graphics2D g2draw = imgs[count++].createGraphics();
-                g2draw.drawImage(image, 0, 0, chunkWidth, chunkHeight, chunkWidth * y, chunkHeight * x,
-                        chunkWidth * y + chunkWidth, chunkHeight * x + chunkHeight, null);
-                g2draw.dispose();
-            }
-        }
+                                // draws the image chunk
+                                Graphics2D g2draw = imgs[count++].createGraphics();
+                                g2draw.drawImage(image, 0, 0, chunkWidth, chunkHeight, chunkWidth * y, chunkHeight * x,
+                                        chunkWidth * y + chunkWidth, chunkHeight * x + chunkHeight, null);
+                                g2draw.dispose();
+                            }
+                        }
 
-        switch (fileExtension.toLowerCase()) {
-        case "jpg":
-        case "jpeg":
-            for (int i = 0; i < imgs.length; i++) {
-                ImageWriter writer = ImageIO.getImageWritersByFormatName("jpeg").next();
-                // Using ImageWriteParam to force the system to save jpegs using the highest
-                // quality setting
-                ImageWriteParam param = writer.getDefaultWriteParam();
-                param.setCompressionMode(ImageWriteParam.MODE_EXPLICIT); // Needed see javadoc
-                param.setCompressionQuality(1.0F); // Highest quality
-                writer.setOutput(new FileImageOutputStream(new File(
-                        "resources/image_dataset_10/splitted_images/" + fileName + "_" + i + "." + fileExtension)));
-                writer.write(null, new IIOImage(imgs[i], null, null), param);
-            }
-            break;
-        default:
-            for (int i = 0; i < imgs.length; i++) {
-                ImageIO.write(imgs[i], fileExtension, new File(
-                        "resources/image_dataset_10/splitted_images/" + fileName + "_" + i + "." + fileExtension));
-            }
-        }
+                        switch (fileExtension.toLowerCase()) {
+                        case "jpg":
+                        case "jpeg":
+                            for (int i = 0; i < imgs.length; i++) {
+                                ImageWriter writer = ImageIO.getImageWritersByFormatName("jpeg").next();
+                                // Using ImageWriteParam to force the system to save jpegs using the highest
+                                // quality setting
+                                ImageWriteParam param = writer.getDefaultWriteParam();
+                                param.setCompressionMode(ImageWriteParam.MODE_EXPLICIT); // Needed see javadoc
+                                param.setCompressionQuality(1.0F); // Highest quality
+                                writer.setOutput(
+                                        new FileImageOutputStream(new File("resources/image_dataset_10/splitted_images/"
+                                                + fileName + "_" + i + "." + fileExtension)));
+                                writer.write(null, new IIOImage(imgs[i], null, null), param);
+                            }
+                            break;
+                        default:
+                            for (int i = 0; i < imgs.length; i++) {
+                                ImageIO.write(imgs[i], fileExtension,
+                                        new File("resources/image_dataset_10/splitted_images/" + fileName + "_" + i
+                                                + "." + fileExtension));
+                            }
+                        }
 
-        if (deleteOriginal) {
-            file.delete();
+                        if (deleteOriginal) {
+                            file.delete();
+                        }
+                    } catch (Exception e) {
+                        System.out.println(e);
+                    }
+                }
+            });
         }
     }
 
     // from
     // http://kalanir.blogspot.com/2010/02/how-to-merge-multiple-images-into-one.html
-    public void ImageMerger(boolean deleteOriginal) throws IOException {
+    public void ImageMerger(String fileInputPath, boolean deleteOriginal) throws IOException {
         int rows = 1; // we assume the no. of rows and cols are known and each chunk has equal width
                       // and height
         int cols = 2;

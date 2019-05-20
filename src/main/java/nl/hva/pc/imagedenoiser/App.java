@@ -16,7 +16,7 @@ import java.util.concurrent.TimeUnit;
  */
 public class App {
 
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) throws Exception {
 
         Image image = new Image();
         FileUtility fileHelper = new FileUtility();
@@ -24,8 +24,8 @@ public class App {
         fileHelper.Unzip("image_dataset_10.zip", "resources/");
         fileHelper.CreateFolder("resources/image_dataset_10/splitted_images");
 
-        image.ImageSplitter(false);
-        image.ImageMerger(false);
+        image.ImageSplitter("resources/image_dataset_10/input_images", false);
+        // image.ImageMerger(false);
 
         // TODO implement file download to keep the project size small
         // FileDownload fileDownload = new FileDownload();
