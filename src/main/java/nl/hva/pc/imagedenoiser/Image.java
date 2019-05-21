@@ -33,10 +33,13 @@ public class Image {
      * 
      * @param fileInputPath  folder of the images that you want to split
      * @param fileOutputPath output folder of the splitted images
+     * @param rowSize        number of cells in a row
+     * @param colSize        number of cells in a column
      * @param deleteOriginal delete the original file
      * @throws Exception
      */
-    public void ImageSplitter(String fileInputPath, String fileOutputPath, boolean deleteOriginal) throws Exception {
+    public void ImageSplitter(String fileInputPath, String fileOutputPath, int rowSize, int colSize,
+            boolean deleteOriginal) throws Exception {
         FileUtility fileUtility = new FileUtility();
         fileUtility.CreateFolder(fileOutputPath);
         // Traverse the directory to retrieve the images.
@@ -54,8 +57,8 @@ public class Image {
                         fis = new FileInputStream(file);
                         image = ImageIO.read(fis);
 
-                        int rows = 1; // You should decide the values for rows and cols variables
-                        int cols = 2;
+                        int rows = rowSize;
+                        int cols = colSize;
                         int chunks = rows * cols;
 
                         int chunkWidth = image.getWidth() / cols; // determines the chunk width and height
@@ -115,10 +118,13 @@ public class Image {
      * 
      * @param fileInputPath  path to the folder containing the splitted images
      * @param fileOutputPath output path of the merged images
+     * @param rowSize        number of cells in a row
+     * @param colSize        number of cells in a column
      * @param deleteOriginal delete the original file
      * @throws IOException
      */
-    public void ImageMerger(String fileInputPath, String fileOutputPath, boolean deleteOriginal) throws IOException {
+    public void ImageMerger(String fileInputPath, String fileOutputPath, int rowSize, int colSize,
+            boolean deleteOriginal) throws IOException {
         FileUtility fileUtility = new FileUtility();
         fileUtility.CreateFolder(fileOutputPath);
 
@@ -127,15 +133,16 @@ public class Image {
 
         for (int i = 0; i < pathList.size(); i++) {
             String fileExtension = pathList.get(i).substring(pathList.get(i).lastIndexOf(".") + 1).trim();
-            pathList.set(i, pathList.get(i).replaceAll("_\\d." + fileExtension, "." + fileExtension));
+            // remove the _{{ number }} part of the path
+            pathList.set(i, pathList.get(i).replaceAll("_\\d+." + fileExtension, "." + fileExtension));
         }
+
         List<String> dedupedList = pathList.stream().distinct().collect(Collectors.toList());
 
         dedupedList.forEach((filePath) -> {
             try {
-                int rows = 1; // we assume the no. of rows and cols are known and each chunk has equal width
-                // and height
-                int cols = 2;
+                int rows = rowSize;
+                int cols = colSize;
                 int chunks = rows * cols;
                 String fileExtension = "";
                 String fileName = "";
@@ -146,6 +153,7 @@ public class Image {
                 File[] imgFiles = new File[chunks];
                 for (int i = 0; i < chunks; i++) {
                     fileExtension = filePath.substring(filePath.lastIndexOf(".") + 1).trim();
+                    // Construct the file path
                     imgFiles[i] = new File(
                             filePath.substring(0, filePath.lastIndexOf('.')) + "_" + i + "." + fileExtension);
                     fileName = imgFiles[i].getName().substring(imgFiles[i].getName().lastIndexOf("/") + 1).substring(0,

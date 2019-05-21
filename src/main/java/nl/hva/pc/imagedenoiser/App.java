@@ -20,14 +20,17 @@ public class App {
 
     public static void main(String[] args) throws Exception {
 
+        final Pattern PATTERN = Pattern.compile("(\\D*)(\\d*)");
+        final int ROW_SIZE = 4;
+        final int COL_SIZE = 4;
+
         Image image = new Image();
         FileUtility fileHelper = new FileUtility();
-        final Pattern PATTERN = Pattern.compile("(\\D*)(\\d*)");
 
         fileHelper.Unzip("image_dataset_10.zip", "resources/", false);
 
         image.ImageSplitter("resources/image_dataset_10/input_images", "resources/image_dataset_10/splitted_images",
-                false);
+                ROW_SIZE, COL_SIZE, false);
 
         // TODO implement file download to keep the project size small
         // FileDownload fileDownload = new FileDownload();
@@ -83,11 +86,10 @@ public class App {
                 totalTimeTaken = totalTimeTaken + timeTaken;
                 System.out.println(id + "\t" + timeTaken);
             }
-            System.out.println("Total time taken: "
-                    + totalTimeTaken + " milliseconds.");
+            System.out.println("Total time taken: " + totalTimeTaken + " milliseconds.");
         }
 
         image.ImageMerger("resources/image_dataset_10/denoised_images", "resources/image_dataset_10/output_images",
-                false);
+                ROW_SIZE, COL_SIZE, false);
     }
 }
