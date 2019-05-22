@@ -8,9 +8,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.HashMap;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -19,10 +17,6 @@ import javax.imageio.ImageIO;
 import javax.imageio.ImageWriteParam;
 import javax.imageio.ImageWriter;
 import javax.imageio.stream.FileImageOutputStream;
-
-import org.opencv.core.Mat;
-import org.opencv.imgcodecs.Imgcodecs;
-import org.opencv.photo.Photo;
 
 public class Image {
 
@@ -210,79 +204,4 @@ public class Image {
             }
         });
     }
-
-    /**
-     * The one method that does all the work
-     * 
-     * @param fileInputPath  Path of the extracted images, the path starts with
-     *                       "/resources/.."
-     * @param fileOutputPath Path to write the denoised images to
-     * @param showAllOutput  Prints the intermediate output
-     * @return
-     */
-    public HashMap<String, Long> RunDenoiser(String fileInputPath, String fileOutputPath, Boolean showAllOutput) {
-
-        FileUtility fileHelper = new FileUtility();
-        HashMap<String, Long> idAndTimeMap = new HashMap<>();
-
-        // These are the default parameters given by OpenCV for
-        // fastNlMeansDenoisingColored
-        int templateWindowSize = 7;
-        int wsearchWindowSize = 21;
-        String targetToReplace = "Real";
-        String replacementText = "Denoised";
-
-        // Loads in the OpenCV library
-        nu.pattern.OpenCV.loadShared();
-        // Creates a folder for the output
-        fileHelper.CreateFolder(fileOutputPath);
-
-        // Traverse the directory to retrieve the images.
-        try (Stream<Path> paths = Files.walk(Paths.get(fileInputPath))) {
-            Stopwatch stopwatch = new Stopwatch();
-            paths.forEach((pathToImage) -> {
-                // Retrieves name of image file
-                String nameOfImage = pathToImage.toString().substring(pathToImage.toString().lastIndexOf("/") + 1);
-                if (nameOfImage.substring(nameOfImage.lastIndexOf(".") + 1).toLowerCase().matches("jpg|png")) {
-                    // Retrieves the number of the image at the first underscore and last underscore
-                    // to create an unique id
-                    String idOfImage = nameOfImage.substring(0, nameOfImage.indexOf("_")) + "_" + nameOfImage
-                            .substring(0, nameOfImage.indexOf(".")).substring(nameOfImage.lastIndexOf("_") + 1);
-                    String outputImageName = nameOfImage.replace(targetToReplace, replacementText);
-
-                    // Reset stopwatch
-                    stopwatch.start();
-                    // Loads image from path
-                    Mat source = Imgcodecs.imread(pathToImage.toString(), Imgcodecs.CV_LOAD_IMAGE_COLOR);
-                    Mat destination = new Mat(source.rows(), source.cols(), source.type());
-                    destination = source;
-                    Photo.fastNlMeansDenoisingColored(source, destination, 3, 3, templateWindowSize, wsearchWindowSize);
-                    Imgcodecs.imwrite(fileOutputPath + "/" + outputImageName, destination);
-                    long elapsedTime = stopwatch.elapsedTime();
-                    if (showAllOutput) {
-                        System.out.println(
-                                "It took the system " + TimeUnit.MILLISECONDS.convert(elapsedTime, TimeUnit.NANOSECONDS)
-                                        + " milliseconds to denoise the image " + nameOfImage
-                                        + ". Output image has been saved with the name " + outputImageName);
-                    }
-                    idAndTimeMap.put(idOfImage, elapsedTime);
-                } else {
-                    if (showAllOutput) {
-                        System.out.println(nameOfImage + " is not an image with the following extensions: .jpg | .png");
-                    }
-                }
-            });
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        long totalTimeTaken = 0l;
-        for (Long time : idAndTimeMap.values()) {
-            totalTimeTaken += time;
-        }
-        if (showAllOutput) {
-            System.out.println("Total time taken: "
-                    + TimeUnit.MILLISECONDS.convert(totalTimeTaken, TimeUnit.NANOSECONDS) + " milliseconds.");
-        }
-        return idAndTimeMap;
-    };
 }
