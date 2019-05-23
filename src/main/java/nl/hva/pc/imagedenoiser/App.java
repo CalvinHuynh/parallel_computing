@@ -24,17 +24,17 @@ import java.util.stream.Collectors;
 public class App {
 
     // TODO: Add commandline arguments to run it as a jar.
-    // Required arguments would be 
-    // - NUMBER_OF_THREADS // maybe use a method to check for threads available on the system
+    // Required arguments would be
+    // - NUMBER_OF_THREADS // maybe use a method to check for threads available on
+    // the system
     public static void main(String[] args) throws Exception {
 
         final Pattern PATTERN = Pattern.compile("(\\D*)(\\d*)");
         // ROW_SIZE and COL_SIZE form the raster to split the images
         final int ROW_SIZE = 3;
         final int COL_SIZE = 3;
-        final int NUMBER_OF_THREADS = 4;
-        final int NUMBER_OF_RUNS = 1;
-        ExecutorService executorService = Executors.newFixedThreadPool(NUMBER_OF_THREADS);
+        final int NUMBER_OF_THREADS = 1;
+        final int NUMBER_OF_RUNS = 10;
         int minItemsPerThread;
         int maxItemsPerThread;
         // number of threads that can use the maxItemsPerThread value
@@ -54,29 +54,31 @@ public class App {
                 .filter(Files::isRegularFile).map(result -> result.toString())).collect(Collectors.toList());
 
         minItemsPerThread = pathList.size() / NUMBER_OF_THREADS;
-        System.out.println("minimum items per thread " + minItemsPerThread);
+        // System.out.println("minimum items per thread " + minItemsPerThread);
         maxItemsPerThread = minItemsPerThread + 1;
-        System.out.println("maximum items per thread " + maxItemsPerThread);
+        // System.out.println("maximum items per thread " + maxItemsPerThread);
         threadsWithMaxItems = pathList.size() - NUMBER_OF_THREADS * minItemsPerThread;
-        System.out.println("threads with max items " + threadsWithMaxItems);
-    
+        // System.out.println("threads with max items " + threadsWithMaxItems);
+
         // Outer loop for running the test multiple times.
-        // The outer loop is placed here, because we are only measuring the time it takes to denoise the image.
+        // The outer loop is placed here, because we are only measuring the time it
+        // takes to denoise the image.
         for (int i = 0; i < NUMBER_OF_RUNS; i++) {
+            ExecutorService executorService = Executors.newFixedThreadPool(NUMBER_OF_THREADS);
             System.out.println("Currently on run " + (i + 1));
             List<CallableDenoiser> taskList = new ArrayList<>();
             for (int j = 0; j < NUMBER_OF_THREADS; j++) {
-                System.out.println("determining the item count for thread " + j);
+                // System.out.println("determining the item count for thread " + j);
                 int itemsCount = (j < threadsWithMaxItems ? maxItemsPerThread : minItemsPerThread);
-                System.out.println("item count is " + itemsCount);
-                System.out.println("start index is " + startOfList);
+                // System.out.println("item count is " + itemsCount);
+                // System.out.println("start index is " + startOfList);
                 int endOfList = startOfList + itemsCount;
-                System.out.println("end index is " + endOfList);
-                CallableDenoiser callableDenoiser = new CallableDenoiser("thread_" + j, pathList.subList(startOfList, endOfList),
-                        "resources/image_dataset_10/denoised_images", true);
+                // System.out.println("end index is " + endOfList);
+                CallableDenoiser callableDenoiser = new CallableDenoiser("thread_" + j,
+                        pathList.subList(startOfList, endOfList), "resources/image_dataset_10/denoised_images", false);
                 taskList.add(callableDenoiser);
                 startOfList = endOfList;
-                System.out.println("new start index is " + startOfList);
+                // System.out.println("new start index is " + startOfList);
             }
 
             startProcessingTime = System.nanoTime();
@@ -89,8 +91,8 @@ public class App {
             executorService.shutdown();
             if (!executorService.isTerminated()) {
                 System.out.println("Waiting for termination...");
-                executorService.awaitTermination(100, TimeUnit.MILLISECONDS);
-            } 
+                executorService.awaitTermination(10, TimeUnit.MILLISECONDS);
+            }
             if (executorService.isTerminated()) {
                 System.out.println("Executor service has been terminated");
                 totalProcessingTime = System.nanoTime() - startProcessingTime;
@@ -106,8 +108,9 @@ public class App {
                 System.out.println(id + "\t" + timeTaken);
             }
             System.out.println("Sum of total time taken by threads " + totalTimeTaken + " milliseconds.");
-            System.out.println("Total processing time is: " + TimeUnit.MILLISECONDS.convert(totalProcessingTime, TimeUnit.NANOSECONDS)
-                    + " milliseconds.");
+            System.out.println("Total processing time is: "
+                    + TimeUnit.MILLISECONDS.convert(totalProcessingTime, TimeUnit.NANOSECONDS) + " milliseconds.");
+            startOfList = 0; // reset the list index
         }
 
         image.ImageMerger("resources/image_dataset_10/denoised_images", "resources/image_dataset_10/output_images",
