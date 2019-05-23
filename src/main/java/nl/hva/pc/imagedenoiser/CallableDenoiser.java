@@ -17,10 +17,11 @@ public class CallableDenoiser implements Callable<HashMap<String, Long>> {
     private Boolean showAllOutput;
 
     /**
-     * @param threadIdentifier Identifier to identify which thread denoised which part of the image
-     * @param fileInputPaths  Array of the file locations
-     * @param fileOutputPath Path to write the denoised images to
-     * @param showAllOutput  Prints the intermediate output
+     * @param threadIdentifier Identifier to identify which thread denoised which
+     *                         part of the image
+     * @param fileInputPaths   Array of the file locations
+     * @param fileOutputPath   Path to write the denoised images to
+     * @param showAllOutput    Prints the intermediate output
      */
     public CallableDenoiser(String threadIdentifier, List<String> fileInputPaths, String fileOutputPath,
             Boolean showAllOutput) {
@@ -89,8 +90,9 @@ public class CallableDenoiser implements Callable<HashMap<String, Long>> {
             totalTimeTaken += time;
         }
         if (showAllOutput) {
-            System.out.println("Total time taken: "
-                    + TimeUnit.MILLISECONDS.convert(totalTimeTaken, TimeUnit.NANOSECONDS) + " milliseconds.");
+            System.out.println(threadIdentifier + " took "
+                    + TimeUnit.MILLISECONDS.convert(totalTimeTaken, TimeUnit.NANOSECONDS)
+                    + " milliseconds to denoise the set of " + fileInputPaths.size() + " images");
         }
         return idAndTimeMap;
     };

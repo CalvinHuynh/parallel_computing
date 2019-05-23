@@ -23,23 +23,26 @@ import java.util.stream.Collectors;
  */
 public class App {
 
+    // TODO: Add commandline arguments to run it as a jar.
+    // Required arguments would be 
+    // - NUMBER_OF_THREADS // maybe use a method to check for threads available on the system
     public static void main(String[] args) throws Exception {
 
         final Pattern PATTERN = Pattern.compile("(\\D*)(\\d*)");
+        // ROW_SIZE and COL_SIZE form the raster to split the images
         final int ROW_SIZE = 3;
         final int COL_SIZE = 3;
         final int NUMBER_OF_THREADS = 4;
         final int NUMBER_OF_RUNS = 1;
-        // List<String> synchronizedPathList = new ArrayList();
         ExecutorService executorService = Executors.newFixedThreadPool(NUMBER_OF_THREADS);
         int minItemsPerThread;
         int maxItemsPerThread;
         // number of threads that can use the maxItemsPerThread value
         int threadsWithMaxItems;
         int startOfList = 0;
+        long startProcessingTime = 0l;
+        long totalProcessingTime = 0l;
         Image image = new Image();
-        Stopwatch stopwatch = new Stopwatch();
-        Long timeElapsed = 0l;
         FileUtility fileHelper = new FileUtility();
 
         fileHelper.Unzip("image_dataset_10.zip", "resources/", false);
@@ -75,17 +78,22 @@ public class App {
                 startOfList = endOfList;
                 System.out.println("new start index is " + startOfList);
             }
-            stopwatch.start();
+
+            startProcessingTime = System.nanoTime();
             List<Future<HashMap<String, Long>>> futureHashMaps = executorService.invokeAll(taskList);
             HashMap<String, Long> hashMap = new HashMap<>();
             for (Future<HashMap<String, Long>> futureHashMap : futureHashMaps) {
                 hashMap.putAll(futureHashMap.get());
             }
+
             executorService.shutdown();
-            if (executorService.isShutdown());{
-                System.out.println("Executor service has been shutdown");
-                timeElapsed = stopwatch.elapsedTime();
-                System.out.println("Elapsed time is " + TimeUnit.MILLISECONDS.convert(timeElapsed, TimeUnit.NANOSECONDS));
+            if (!executorService.isTerminated()) {
+                System.out.println("Waiting for termination...");
+                executorService.awaitTermination(100, TimeUnit.MILLISECONDS);
+            } 
+            if (executorService.isTerminated()) {
+                System.out.println("Executor service has been terminated");
+                totalProcessingTime = System.nanoTime() - startProcessingTime;
             }
             Map<String, Long> sortedMap = new TreeMap<>(new NumberAwareComparator(PATTERN));
 
@@ -97,7 +105,8 @@ public class App {
                 totalTimeTaken = totalTimeTaken + timeTaken;
                 System.out.println(id + "\t" + timeTaken);
             }
-            System.out.println("Total time taken: " + TimeUnit.MILLISECONDS.convert(stopwatch.elapsedTime(), TimeUnit.NANOSECONDS)
+            System.out.println("Sum of total time taken by threads " + totalTimeTaken + " milliseconds.");
+            System.out.println("Total processing time is: " + TimeUnit.MILLISECONDS.convert(totalProcessingTime, TimeUnit.NANOSECONDS)
                     + " milliseconds.");
         }
 
