@@ -12,6 +12,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -29,12 +30,16 @@ public class App {
     // the system
     public static void main(String[] args) throws Exception {
 
-        final Pattern PATTERN = Pattern.compile("(\\D*)(\\d*)");
+        final Pattern NUMBER_COMPARATOR_PATTERN = Pattern.compile("(\\D*)(\\d*)");
+        final Pattern NUMBERS = Pattern.compile("\\d+");
         // ROW_SIZE and COL_SIZE form the raster to split the images
         final int ROW_SIZE = 3;
         final int COL_SIZE = 3;
-        final int NUMBER_OF_THREADS = 1;
-        final int NUMBER_OF_RUNS = 10;
+        final int NUMBER_OF_THREADS = 2;
+        final int NUMBER_OF_RUNS = 1;
+        // Used to store the results of the denoising
+        HashMap<Integer, TreeMap<String, Long>> statisticsMap = new HashMap<>();
+        // Map<String, Long> statisticsMap = new TreeMap<>();
         int minItemsPerThread;
         int maxItemsPerThread;
         // number of threads that can use the maxItemsPerThread value
@@ -64,6 +69,8 @@ public class App {
         // The outer loop is placed here, because we are only measuring the time it
         // takes to denoise the image.
         for (int i = 0; i < NUMBER_OF_RUNS; i++) {
+            // Insert the current run number as key and let the treemap be empty
+            statisticsMap.put(i + 1, null);
             ExecutorService executorService = Executors.newFixedThreadPool(NUMBER_OF_THREADS);
             System.out.println("Currently on run " + (i + 1));
             List<CallableDenoiser> taskList = new ArrayList<>();
@@ -83,9 +90,9 @@ public class App {
 
             startProcessingTime = System.nanoTime();
             List<Future<HashMap<String, Long>>> futureHashMaps = executorService.invokeAll(taskList);
-            HashMap<String, Long> hashMap = new HashMap<>();
+            HashMap<String, Long> futuresResolvedMap = new HashMap<>();
             for (Future<HashMap<String, Long>> futureHashMap : futureHashMaps) {
-                hashMap.putAll(futureHashMap.get());
+                futuresResolvedMap.putAll(futureHashMap.get());
             }
 
             executorService.shutdown();
@@ -97,16 +104,37 @@ public class App {
                 System.out.println("Executor service has been terminated");
                 totalProcessingTime = System.nanoTime() - startProcessingTime;
             }
-            Map<String, Long> sortedMap = new TreeMap<>(new NumberAwareComparator(PATTERN));
+            // Sort the hashmap
+            Map<String, Long> sortedMap = new TreeMap<>(new NumberAwareComparator(NUMBER_COMPARATOR_PATTERN));
+            sortedMap.putAll(futuresResolvedMap);
 
-            sortedMap.putAll(hashMap);
             long totalTimeTaken = 0l;
+            String id = "";
+            // long totalTimePerImage = 0l;
+            HashMap<String, Long> summedResultMap = new HashMap<>();
             for (Entry<String, Long> entry : sortedMap.entrySet()) {
-                String id = entry.getKey();
+                String identifier = entry.getKey();
+                Matcher matcher = NUMBERS.matcher(identifier);
+                if (matcher.find()) {
+                    id = matcher.group(0);
+                    System.out.println("matched item is " + id);
+                    if (summedResultMap.get(id) == null) {
+                        summedResultMap.put(id, TimeUnit.MILLISECONDS.convert(entry.getValue(), TimeUnit.NANOSECONDS));
+                    } else {
+                        long value = summedResultMap.get(id);
+                        summedResultMap.replace(id,
+                                value + TimeUnit.MILLISECONDS.convert(entry.getValue(), TimeUnit.NANOSECONDS));
+                    }
+                }
                 long timeTaken = TimeUnit.MILLISECONDS.convert(entry.getValue(), TimeUnit.NANOSECONDS);
                 totalTimeTaken = totalTimeTaken + timeTaken;
-                System.out.println(id + "\t" + timeTaken);
+                System.out.println(identifier + "\t" + timeTaken + "\t" + id);
             }
+            TreeMap<String, Long> sortedSummedResultMap = new TreeMap<>(
+                    new NumberAwareComparator(NUMBER_COMPARATOR_PATTERN));
+            sortedSummedResultMap.putAll(summedResultMap);
+
+            statisticsMap.put(i + 1, sortedSummedResultMap);
             System.out.println("Sum of total time taken by threads " + totalTimeTaken + " milliseconds.");
             System.out.println("Total processing time is: "
                     + TimeUnit.MILLISECONDS.convert(totalProcessingTime, TimeUnit.NANOSECONDS) + " milliseconds.");
@@ -115,5 +143,13 @@ public class App {
 
         image.ImageMerger("resources/image_dataset_10/denoised_images", "resources/image_dataset_10/output_images",
                 ROW_SIZE, COL_SIZE, false);
+
+        for (Map.Entry<Integer, TreeMap<String, Long>> statisticEntry : statisticsMap.entrySet()) {
+            int runNumber = statisticEntry.getKey();
+            System.out.println("Summed result for run " + runNumber);
+            for (Map.Entry<String, Long> result : statisticEntry.getValue().entrySet()) {
+                System.out.println(result.getKey() + "\t" + result.getValue());
+            }
+        }
     }
 }
