@@ -36,9 +36,10 @@ public class App {
         final int ROW_SIZE = 3;
         final int COL_SIZE = 3;
         final int NUMBER_OF_THREADS = 2;
-        final int NUMBER_OF_RUNS = 1;
+        final int NUMBER_OF_RUNS = 2;
         // Used to store the results of the denoising
         HashMap<Integer, TreeMap<String, Long>> statisticsMap = new HashMap<>();
+        HashMap<String, Long> summaryMap = new HashMap<>();
         // Map<String, Long> statisticsMap = new TreeMap<>();
         int minItemsPerThread;
         int maxItemsPerThread;
@@ -148,8 +149,22 @@ public class App {
             int runNumber = statisticEntry.getKey();
             System.out.println("Summed result for run " + runNumber);
             for (Map.Entry<String, Long> result : statisticEntry.getValue().entrySet()) {
+                if (summaryMap.get(result.getKey()) == null) {
+                    summaryMap.put(result.getKey(), result.getValue());
+                } else {
+                    long value = summaryMap.get(result.getKey());
+                    summaryMap.replace(result.getKey(), value + result.getValue());
+                }
                 System.out.println(result.getKey() + "\t" + result.getValue());
             }
+        }
+
+        TreeMap<String, Long> sortedSummaryMap = new TreeMap<>(new NumberAwareComparator(NUMBER_COMPARATOR_PATTERN));
+        sortedSummaryMap.putAll(summaryMap);
+
+        System.out.println("Summarized values are");
+        for (Map.Entry<String, Long> entry : summaryMap.entrySet()) {
+            System.out.println(entry.getKey() + "\t" + (entry.getValue() / NUMBER_OF_RUNS));
         }
     }
 }
