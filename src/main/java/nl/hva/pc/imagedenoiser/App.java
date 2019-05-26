@@ -118,7 +118,6 @@ public class App {
                 Matcher matcher = NUMBERS.matcher(identifier);
                 if (matcher.find()) {
                     id = matcher.group(0);
-                    System.out.println("matched item is " + id);
                     if (summedResultMap.get(id) == null) {
                         summedResultMap.put(id, TimeUnit.MILLISECONDS.convert(entry.getValue(), TimeUnit.NANOSECONDS));
                     } else {
@@ -162,7 +161,7 @@ public class App {
         TreeMap<String, Long> sortedSummaryMap = new TreeMap<>(new NumberAwareComparator(NUMBER_COMPARATOR_PATTERN));
         sortedSummaryMap.putAll(summaryMap);
 
-        System.out.println("Summarized values are");
+        System.out.println("Summarized values from all runs are");
         for (Map.Entry<String, Long> entry : summaryMap.entrySet()) {
             System.out.println(entry.getKey() + "\t" + (entry.getValue() / NUMBER_OF_RUNS));
         }
