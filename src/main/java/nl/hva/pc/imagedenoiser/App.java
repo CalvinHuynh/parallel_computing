@@ -60,11 +60,8 @@ public class App {
                 .filter(Files::isRegularFile).map(result -> result.toString())).collect(Collectors.toList());
 
         minItemsPerThread = pathList.size() / NUMBER_OF_THREADS;
-        // System.out.println("minimum items per thread " + minItemsPerThread);
         maxItemsPerThread = minItemsPerThread + 1;
-        // System.out.println("maximum items per thread " + maxItemsPerThread);
         threadsWithMaxItems = pathList.size() - NUMBER_OF_THREADS * minItemsPerThread;
-        // System.out.println("threads with max items " + threadsWithMaxItems);
 
         // Outer loop for running the test multiple times.
         // The outer loop is placed here, because we are only measuring the time it
@@ -76,17 +73,12 @@ public class App {
             System.out.println("Currently on run " + (i + 1));
             List<CallableDenoiser> taskList = new ArrayList<>();
             for (int j = 0; j < NUMBER_OF_THREADS; j++) {
-                // System.out.println("determining the item count for thread " + j);
                 int itemsCount = (j < threadsWithMaxItems ? maxItemsPerThread : minItemsPerThread);
-                // System.out.println("item count is " + itemsCount);
-                // System.out.println("start index is " + startOfList);
                 int endOfList = startOfList + itemsCount;
-                // System.out.println("end index is " + endOfList);
                 CallableDenoiser callableDenoiser = new CallableDenoiser("thread_" + j,
                         pathList.subList(startOfList, endOfList), "resources/image_dataset_10/denoised_images", false);
                 taskList.add(callableDenoiser);
                 startOfList = endOfList;
-                // System.out.println("new start index is " + startOfList);
             }
 
             startProcessingTime = System.nanoTime();
@@ -111,7 +103,6 @@ public class App {
 
             long totalTimeTaken = 0l;
             String id = "";
-            // long totalTimePerImage = 0l;
             HashMap<String, Long> summedResultMap = new HashMap<>();
             for (Entry<String, Long> entry : sortedMap.entrySet()) {
                 String identifier = entry.getKey();
