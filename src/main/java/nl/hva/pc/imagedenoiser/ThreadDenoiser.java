@@ -2,14 +2,13 @@ package nl.hva.pc.imagedenoiser;
 
 import java.util.HashMap;
 import java.util.List;
-import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 
 import org.opencv.core.Mat;
 import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.photo.Photo;
 
-public class CallableDenoiser implements Callable<HashMap<String, Long>> {
+public class ThreadDenoiser extends Thread {
 
     private String threadIdentifier;
     private List<String> fileInputPaths;
@@ -23,7 +22,7 @@ public class CallableDenoiser implements Callable<HashMap<String, Long>> {
      * @param fileOutputPath   Path to write the denoised images to
      * @param showAllOutput    Prints the intermediate output
      */
-    public CallableDenoiser(String threadIdentifier, List<String> fileInputPaths, String fileOutputPath,
+    public ThreadDenoiser(String threadIdentifier, List<String> fileInputPaths, String fileOutputPath,
             Boolean showAllOutput) {
         this.threadIdentifier = threadIdentifier;
         this.fileInputPaths = fileInputPaths;
@@ -31,8 +30,8 @@ public class CallableDenoiser implements Callable<HashMap<String, Long>> {
         this.showAllOutput = showAllOutput;
     }
 
-    @Override
-    public HashMap<String, Long> call() throws Exception {
+    // @Override
+    public void run() {
 
         FileUtility fileHelper = new FileUtility();
         HashMap<String, Long> idAndTimeMap = new HashMap<>();
@@ -79,6 +78,9 @@ public class CallableDenoiser implements Callable<HashMap<String, Long>> {
                             + ". Output image has been saved with the name " + outputImageName);
                 }
                 idAndTimeMap.put(idOfImage, elapsedTime);
+
+                // Write to global hashmap
+                App.globalHashMap.put(idOfImage, elapsedTime);
             } else {
                 if (showAllOutput) {
                     System.out.println(nameOfImage + " is not an image with the following extensions: .jpg | .png");
@@ -94,6 +96,5 @@ public class CallableDenoiser implements Callable<HashMap<String, Long>> {
                     + TimeUnit.MILLISECONDS.convert(totalTimeTaken, TimeUnit.NANOSECONDS)
                     + " milliseconds to denoise the set of " + fileInputPaths.size() + " images");
         }
-        return idAndTimeMap;
     };
 }

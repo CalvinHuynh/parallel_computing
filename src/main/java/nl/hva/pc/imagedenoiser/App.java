@@ -8,9 +8,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.TreeMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -24,6 +21,7 @@ import java.util.stream.Collectors;
  */
 public class App {
 
+    static HashMap<String, Long> globalHashMap = new HashMap<>();
     // TODO: Add commandline arguments to run it as a jar.
     // Required arguments would be
     // - NUMBER_OF_THREADS // maybe use a method to check for threads available on
@@ -40,7 +38,6 @@ public class App {
         // Used to store the results of the denoising
         HashMap<Integer, TreeMap<String, Long>> statisticsMap = new HashMap<>();
         HashMap<String, Long> summaryMap = new HashMap<>();
-        // Map<String, Long> statisticsMap = new TreeMap<>();
         int minItemsPerThread;
         int maxItemsPerThread;
         // number of threads that can use the maxItemsPerThread value
@@ -59,7 +56,7 @@ public class App {
         List<String> pathList = (Files.walk(Paths.get("resources/image_dataset_10/splitted_images"))
                 .filter(Files::isRegularFile).map(result -> result.toString())).collect(Collectors.toList());
 
-        minItemsPerThread = pathList.size() / NUMBER_OF_THREADS;
+        minItemsPerThread = pathList.size() / NUMBER_OF_THREADS;    
         maxItemsPerThread = minItemsPerThread + 1;
         threadsWithMaxItems = pathList.size() - NUMBER_OF_THREADS * minItemsPerThread;
 
@@ -69,37 +66,32 @@ public class App {
         for (int i = 0; i < NUMBER_OF_RUNS; i++) {
             // Insert the current run number as key and let the treemap be empty
             statisticsMap.put(i + 1, null);
-            ExecutorService executorService = Executors.newFixedThreadPool(NUMBER_OF_THREADS);
             System.out.println("Currently on run " + (i + 1));
-            List<CallableDenoiser> taskList = new ArrayList<>();
+            List<ThreadDenoiser> taskList = new ArrayList<>();
             for (int j = 0; j < NUMBER_OF_THREADS; j++) {
                 int itemsCount = (j < threadsWithMaxItems ? maxItemsPerThread : minItemsPerThread);
                 int endOfList = startOfList + itemsCount;
-                CallableDenoiser callableDenoiser = new CallableDenoiser("thread_" + j,
-                        pathList.subList(startOfList, endOfList), "resources/image_dataset_10/denoised_images", false);
-                taskList.add(callableDenoiser);
+                ThreadDenoiser threadDenoiser = new ThreadDenoiser("thread_" + j,
+                        pathList.subList(startOfList, endOfList), "resources/image_dataset_10/denoised_images", true);
+                taskList.add(threadDenoiser);
                 startOfList = endOfList;
             }
 
             startProcessingTime = System.nanoTime();
-            List<Future<HashMap<String, Long>>> futureHashMaps = executorService.invokeAll(taskList);
-            HashMap<String, Long> futuresResolvedMap = new HashMap<>();
-            for (Future<HashMap<String, Long>> futureHashMap : futureHashMaps) {
-                futuresResolvedMap.putAll(futureHashMap.get());
+            // Start all the threads
+            for (int j = 0; j < taskList.size(); j++) {
+                taskList.get(j).start();
             }
 
-            executorService.shutdown();
-            if (!executorService.isTerminated()) {
-                System.out.println("Waiting for termination...");
-                executorService.awaitTermination(10, TimeUnit.MILLISECONDS);
+            // Join all the threads
+            for (int j = 0; j < taskList.size(); j++) {
+                taskList.get(j).join(10);
             }
-            if (executorService.isTerminated()) {
-                System.out.println("Executor service has been terminated");
-                totalProcessingTime = System.nanoTime() - startProcessingTime;
-            }
+            totalProcessingTime = System.nanoTime() - startProcessingTime;
+
             // Sort the hashmap
             Map<String, Long> sortedMap = new TreeMap<>(new NumberAwareComparator(NUMBER_COMPARATOR_PATTERN));
-            sortedMap.putAll(futuresResolvedMap);
+            sortedMap.putAll(globalHashMap);
 
             long totalTimeTaken = 0l;
             String id = "";
