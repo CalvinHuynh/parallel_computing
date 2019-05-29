@@ -8,12 +8,14 @@ import org.opencv.core.Mat;
 import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.photo.Photo;
 
-public class ThreadDenoiser extends Thread {
+public class ThreadDenoiser implements Runnable {
 
     private String threadIdentifier;
     private List<String> fileInputPaths;
     private String fileOutputPath;
     private Boolean showAllOutput;
+
+    Thread thread;
 
     /**
      * @param threadIdentifier Identifier to identify which thread denoised which
@@ -28,11 +30,16 @@ public class ThreadDenoiser extends Thread {
         this.fileInputPaths = fileInputPaths;
         this.fileOutputPath = fileOutputPath;
         this.showAllOutput = showAllOutput;
+        thread = new Thread(this);
+        if (showAllOutput) {
+            System.out.println("Starting thread " + threadIdentifier);
+        }
+        thread.start();
+        // Put start time into the list
+        App.globalTimeArrayList.add(TimeUnit.MILLISECONDS.convert(System.nanoTime(), TimeUnit.NANOSECONDS));
     }
 
-    // @Override
     public void run() {
-
         FileUtility fileHelper = new FileUtility();
         HashMap<String, Long> idAndTimeMap = new HashMap<>();
         Stopwatch stopwatch = new Stopwatch();
@@ -92,9 +99,12 @@ public class ThreadDenoiser extends Thread {
             totalTimeTaken += time;
         }
         if (showAllOutput) {
-            System.out.println(threadIdentifier + " took "
-                    + TimeUnit.MILLISECONDS.convert(totalTimeTaken, TimeUnit.NANOSECONDS)
-                    + " milliseconds to denoise the set of " + fileInputPaths.size() + " images");
+            System.out.println(
+                    threadIdentifier + " took " + TimeUnit.MILLISECONDS.convert(totalTimeTaken, TimeUnit.NANOSECONDS)
+                            + " milliseconds to denoise the set of " + fileInputPaths.size() + " images");
         }
+
+        // Put end time into the list
+        App.globalTimeArrayList.add(TimeUnit.MILLISECONDS.convert(System.nanoTime(), TimeUnit.NANOSECONDS));
     };
 }

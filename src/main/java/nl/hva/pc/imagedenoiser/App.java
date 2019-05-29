@@ -22,6 +22,8 @@ import java.util.stream.Collectors;
 public class App {
 
     static HashMap<String, Long> globalHashMap = new HashMap<>();
+    static List<Long> globalTimeArrayList = new ArrayList<>();
+
     // TODO: Add commandline arguments to run it as a jar.
     // Required arguments would be
     // - NUMBER_OF_THREADS // maybe use a method to check for threads available on
@@ -43,8 +45,8 @@ public class App {
         // number of threads that can use the maxItemsPerThread value
         int threadsWithMaxItems;
         int startOfList = 0;
-        long startProcessingTime = 0l;
-        long totalProcessingTime = 0l;
+        // long startProcessingTime = 0l;
+        // long totalProcessingTime = 0l;
         Image image = new Image();
         FileUtility fileHelper = new FileUtility();
 
@@ -56,7 +58,7 @@ public class App {
         List<String> pathList = (Files.walk(Paths.get("resources/image_dataset_10/splitted_images"))
                 .filter(Files::isRegularFile).map(result -> result.toString())).collect(Collectors.toList());
 
-        minItemsPerThread = pathList.size() / NUMBER_OF_THREADS;    
+        minItemsPerThread = pathList.size() / NUMBER_OF_THREADS;
         maxItemsPerThread = minItemsPerThread + 1;
         threadsWithMaxItems = pathList.size() - NUMBER_OF_THREADS * minItemsPerThread;
 
@@ -72,22 +74,18 @@ public class App {
                 int itemsCount = (j < threadsWithMaxItems ? maxItemsPerThread : minItemsPerThread);
                 int endOfList = startOfList + itemsCount;
                 ThreadDenoiser threadDenoiser = new ThreadDenoiser("thread_" + j,
-                        pathList.subList(startOfList, endOfList), "resources/image_dataset_10/denoised_images", true);
+                        pathList.subList(startOfList, endOfList), "resources/image_dataset_10/denoised_images", false);
                 taskList.add(threadDenoiser);
                 startOfList = endOfList;
             }
-
-            startProcessingTime = System.nanoTime();
-            // Start all the threads
-            for (int j = 0; j < taskList.size(); j++) {
-                taskList.get(j).start();
-            }
+            // startProcessingTime = System.nanoTime();
 
             // Join all the threads
             for (int j = 0; j < taskList.size(); j++) {
-                taskList.get(j).join(10);
+                taskList.get(j).thread.join();
             }
-            totalProcessingTime = System.nanoTime() - startProcessingTime;
+            // System.out.println("Existing thread");
+            // totalProcessingTime = System.nanoTime() - startProcessingTime;
 
             // Sort the hashmap
             Map<String, Long> sortedMap = new TreeMap<>(new NumberAwareComparator(NUMBER_COMPARATOR_PATTERN));
@@ -116,14 +114,17 @@ public class App {
             TreeMap<String, Long> sortedSummedResultMap = new TreeMap<>(
                     new NumberAwareComparator(NUMBER_COMPARATOR_PATTERN));
             sortedSummedResultMap.putAll(summedResultMap);
-
             statisticsMap.put(i + 1, sortedSummedResultMap);
+            long totalProcessingTime = globalTimeArrayList.get(globalTimeArrayList.size() - 1)
+                    - globalTimeArrayList.get(0);
             System.out.println("Sum of total time taken by threads " + totalTimeTaken + " milliseconds.");
             System.out.println("Total processing time is: "
-                    + TimeUnit.MILLISECONDS.convert(totalProcessingTime, TimeUnit.NANOSECONDS) + " milliseconds.");
+                    + totalProcessingTime + " milliseconds.");
             startOfList = 0; // reset the list index
+            globalTimeArrayList.clear(); // reset time array list for current run
         }
 
+        System.out.println("Merging images");
         image.ImageMerger("resources/image_dataset_10/denoised_images", "resources/image_dataset_10/output_images",
                 ROW_SIZE, COL_SIZE, false);
 
@@ -148,5 +149,7 @@ public class App {
         for (Map.Entry<String, Long> entry : summaryMap.entrySet()) {
             System.out.println(entry.getKey() + "\t" + (entry.getValue() / NUMBER_OF_RUNS));
         }
+
+        globalHashMap.clear();
     }
 }
