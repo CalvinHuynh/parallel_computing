@@ -18,8 +18,9 @@ public class App {
     public static void main(String[] args) throws Exception {
 
         final Pattern PATTERN = Pattern.compile("(\\D*)(\\d*)");
-        final int ROW_SIZE = 4;
-        final int COL_SIZE = 4;
+        final int ROW_SIZE = 3;
+        final int COL_SIZE = 3;
+        final int NUMBER_OF_RUNS = 2;
 
         Image image = new Image();
         FileUtility fileHelper = new FileUtility();
@@ -34,7 +35,7 @@ public class App {
         // fileDownload.DownloadWithJavaNIO("https://drive.google.com/uc?export=download&confirm=YDo9&id=1invDcT-fqGNWRQI4R2b8MwoZa78T2JGK",
         // "downloaded.zip");
 
-        for (int i = 0; i < 1; i++) {
+        for (int i = 0; i < NUMBER_OF_RUNS; i++) {
             System.out.println("Currently on run " + (i + 1));
             HashMap<String, Long> hashMap = image.RunDenoiser("resources/image_dataset_10/splitted_images",
                     "resources/image_dataset_10/denoised_images", false);
