@@ -36,8 +36,8 @@ public class App {
         // ROW_SIZE and COL_SIZE form the raster to split the images
         final int ROW_SIZE = 3;
         final int COL_SIZE = 3;
-        final int NUMBER_OF_THREADS = 4;
-        final int NUMBER_OF_RUNS = 1;
+        final int NUMBER_OF_THREADS = 2;
+        final int NUMBER_OF_RUNS = 10;
         // Used to store the results of the denoising
         HashMap<Integer, TreeMap<String, Long>> statisticsMap = new HashMap<>();
         HashMap<String, Long> summaryMap = new HashMap<>();
@@ -67,7 +67,7 @@ public class App {
             // Spawn the number of threads
             for (int j = 0; j < NUMBER_OF_THREADS; j++) {
                 CallableDenoiser callableDenoiser = new CallableDenoiser("thread_" + j, pathsQueue,
-                        "resources/image_dataset_10/denoised_images", true);
+                        "resources/image_dataset_10/denoised_images", false);
                 taskList.add(callableDenoiser);
             }
 
