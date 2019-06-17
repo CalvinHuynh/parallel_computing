@@ -22,15 +22,10 @@ public class Producer implements Runnable {
     public void run() {
         try (Stream<Path> paths = Files.walk(Paths.get(path))) {
             paths.filter(Files::isRegularFile).forEach(result -> {
-                try {
-                    pathsQueue.put(result.toString());
-                } catch (InterruptedException e) {
-                    System.out.println("Producer " + producerId + " got encountered error " + e);
-                    e.printStackTrace();
-                    Thread.currentThread().interrupt();
-                }
+                // System.out.println("Producer " + producerId + " is adding file " + result.toString() + " the queue");
+				pathsQueue.offer(result.toString());
             });
-            System.out.println("queue size from producer " + producerId + " is " + pathsQueue.size());
+            // System.out.println("queue size from producer " + producerId + " is " + pathsQueue.size());
         } catch (IOException e) {
             e.printStackTrace();
             System.out.println("Producer " + producerId + " got encountered error " + e);

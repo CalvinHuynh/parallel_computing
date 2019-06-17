@@ -33,11 +33,12 @@ public class App {
         // ROW_SIZE and COL_SIZE form the raster to split the images
         final int ROW_SIZE = 3;
         final int COL_SIZE = 3;
+        final int NUMBER_OF_IMAGES = 10;
         final int NUMBER_OF_PRODUCERS = 1;
-        final int NUMBER_OF_CONSUMERS = 1;
-        final int NUMBER_OF_RUNS = 1;
-        final int QUEUE_LIMIT = 20;
-    
+        final int NUMBER_OF_RUNS = 10;
+        int NUMBER_OF_CONSUMERS = 3;
+        int QUEUE_LIMIT = ROW_SIZE * COL_SIZE * NUMBER_OF_IMAGES;
+
         final String ZIP_SOURCE = "image_dataset_10.zip";
         final String ZIP_DESTINATION = "resources/";
         final String INPUT_IMAGES_FOLDER = "resources/image_dataset_10/input_images";
@@ -49,7 +50,7 @@ public class App {
         long startProcessingTime = 0l;
         long totalProcessingTime = 0l;
         if (NUMBER_OF_PRODUCERS > Runtime.getRuntime().availableProcessors()
-                || NUMBER_OF_PRODUCERS > Runtime.getRuntime().availableProcessors()) {
+                || NUMBER_OF_CONSUMERS > Runtime.getRuntime().availableProcessors()) {
             System.out.println("WARNING...\n"
                     + "You are trying to run the application with more cores than the maximum available cores");
         }
@@ -79,12 +80,13 @@ public class App {
 
             List<Producer> producerList = new ArrayList<>();
             List<CallableDenoiser> consumerList = new ArrayList<>();
-            // Spawn the number of produceers
+            // Spawn the number of producers
             for (int j = 0; j < NUMBER_OF_PRODUCERS; j++) {
                 Producer producer = new Producer(j, SPLITTED_IMAGES_FOLDER, pathsQueue);
                 producerList.add(producer);
             }
-            // Start all producers
+
+            // Start the producer
             for (Producer producer : producerList) {
                 executorService.execute(producer);
             }

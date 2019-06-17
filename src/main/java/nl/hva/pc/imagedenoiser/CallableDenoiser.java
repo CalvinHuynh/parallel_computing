@@ -58,6 +58,7 @@ public class CallableDenoiser implements Callable<HashMap<String, Long>> {
         while(!queue.isEmpty()) {
             try {
                 String pathToImage = queue.take();
+                // System.out.println("Consumer " + threadIdentifier + " took file " + pathToImage + " from the queue");
                 String nameOfImage = pathToImage.toString().substring(pathToImage.toString().lastIndexOf("/") + 1);
                 if (nameOfImage.substring(nameOfImage.lastIndexOf(".") + 1).toLowerCase().matches("jpg|png")) {
                     // Retrieves the number of the image at the first underscore and last underscore
