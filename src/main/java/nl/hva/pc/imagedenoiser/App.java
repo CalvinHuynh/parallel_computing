@@ -1,7 +1,5 @@
 package nl.hva.pc.imagedenoiser;
 
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -15,7 +13,6 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 /**
  * Thread and lock implementation of an image denoiser
@@ -36,44 +33,72 @@ public class App {
         // ROW_SIZE and COL_SIZE form the raster to split the images
         final int ROW_SIZE = 3;
         final int COL_SIZE = 3;
-        final int NUMBER_OF_THREADS = 2;
-        final int NUMBER_OF_RUNS = 10;
+        final int NUMBER_OF_PRODUCERS = 1;
+        final int NUMBER_OF_CONSUMERS = 1;
+        final int NUMBER_OF_RUNS = 1;
+        final int QUEUE_LIMIT = 20;
+    
+        final String ZIP_SOURCE = "image_dataset_10.zip";
+        final String ZIP_DESTINATION = "resources/";
+        final String INPUT_IMAGES_FOLDER = "resources/image_dataset_10/input_images";
+        final String SPLITTED_IMAGES_FOLDER = "resources/image_dataset_10/splitted_images";
+        final String DENOISED_IMAGES_FOLDER = "resources/image_dataset_10/denoised_images";
         // Used to store the results of the denoising
         HashMap<Integer, TreeMap<String, Long>> statisticsMap = new HashMap<>();
         HashMap<String, Long> summaryMap = new HashMap<>();
         long startProcessingTime = 0l;
         long totalProcessingTime = 0l;
+        if (NUMBER_OF_PRODUCERS > Runtime.getRuntime().availableProcessors()
+                || NUMBER_OF_PRODUCERS > Runtime.getRuntime().availableProcessors()) {
+            System.out.println("WARNING...\n"
+                    + "You are trying to run the application with more cores than the maximum available cores");
+        }
         Image image = new Image();
         FileUtility fileHelper = new FileUtility();
 
-        fileHelper.Unzip("image_dataset_10.zip", "resources/", false);
+        fileHelper.Unzip(ZIP_SOURCE, ZIP_DESTINATION, false);
 
-        image.ImageSplitter("resources/image_dataset_10/input_images", "resources/image_dataset_10/splitted_images",
-                ROW_SIZE, COL_SIZE, false);
+        image.ImageSplitter(INPUT_IMAGES_FOLDER, SPLITTED_IMAGES_FOLDER, ROW_SIZE, COL_SIZE, false);
 
         // Outer loop for running the test multiple times.
-        // The outer loop is placed here, because we are only measuring the time it takes to denoise the image.
+        // The outer loop is placed here, because we are only measuring the time it
+        // takes to denoise the image.
         for (int i = 0; i < NUMBER_OF_RUNS; i++) {
-            // Create a new LinkedBlockingQueue that contains all the paths to the images
-            LinkedBlockingQueue<String> pathsQueue = (Files
-                    .walk(Paths.get("resources/image_dataset_10/splitted_images")).filter(Files::isRegularFile)
-                    .map(result -> result.toString())).collect(Collectors.toCollection(() -> new LinkedBlockingQueue<>()));
+            // // Create a new LinkedBlockingQueue that contains all the paths to the images
+            // LinkedBlockingQueue<String> pathsQueue =
+            // (Files.walk(Paths.get(FOLDER_OUTPUT_PATH))
+            // .filter(Files::isRegularFile).map(result -> result.toString()))
+            // .collect(Collectors.toCollection(() -> new LinkedBlockingQueue<>()));
+
+            LinkedBlockingQueue<String> pathsQueue = new LinkedBlockingQueue<>(QUEUE_LIMIT);
 
             // Insert the current run number as key and let the treemap be empty
             statisticsMap.put(i + 1, null);
-            ExecutorService executorService = Executors.newFixedThreadPool(NUMBER_OF_THREADS);
+            ExecutorService executorService = Executors.newFixedThreadPool(NUMBER_OF_CONSUMERS);
             System.out.println("Currently on run " + (i + 1));
-            List<CallableDenoiser> taskList = new ArrayList<>();
-            // Spawn the number of threads
-            for (int j = 0; j < NUMBER_OF_THREADS; j++) {
-                CallableDenoiser callableDenoiser = new CallableDenoiser("thread_" + j, pathsQueue,
-                        "resources/image_dataset_10/denoised_images", false);
-                taskList.add(callableDenoiser);
+
+            List<Producer> producerList = new ArrayList<>();
+            List<CallableDenoiser> consumerList = new ArrayList<>();
+            // Spawn the number of produceers
+            for (int j = 0; j < NUMBER_OF_PRODUCERS; j++) {
+                Producer producer = new Producer(j, SPLITTED_IMAGES_FOLDER, pathsQueue);
+                producerList.add(producer);
+            }
+            // Start all producers
+            for (Producer producer : producerList) {
+                executorService.execute(producer);
+            }
+
+            // Spawn the number of consumers
+            for (int k = 0; k < NUMBER_OF_CONSUMERS; k++) {
+                CallableDenoiser callableDenoiser = new CallableDenoiser("thread_" + k, pathsQueue,
+                        DENOISED_IMAGES_FOLDER, false);
+                consumerList.add(callableDenoiser);
             }
 
             startProcessingTime = System.nanoTime();
-            // Start all the threads
-            List<Future<HashMap<String, Long>>> futureHashMaps = executorService.invokeAll(taskList);
+            // Start all consumers
+            List<Future<HashMap<String, Long>>> futureHashMaps = executorService.invokeAll(consumerList);
             HashMap<String, Long> futuresResolvedMap = new HashMap<>();
             for (Future<HashMap<String, Long>> futureHashMap : futureHashMaps) {
                 futuresResolvedMap.putAll(futureHashMap.get());
@@ -142,8 +167,8 @@ public class App {
         TreeMap<String, Long> sortedSummaryMap = new TreeMap<>(new NumberAwareComparator(NUMBER_COMPARATOR_PATTERN));
         sortedSummaryMap.putAll(summaryMap);
 
-        String threadForm = NUMBER_OF_THREADS >= 2 ? "threads" : "thread";
-        System.out.println("Summarized values from all runs with " + NUMBER_OF_THREADS + " " + threadForm + " are:");
+        String threadForm = NUMBER_OF_CONSUMERS >= 2 ? "threads" : "thread";
+        System.out.println("Summarized values from all runs with " + NUMBER_OF_CONSUMERS + " " + threadForm + " are:");
         for (Map.Entry<String, Long> entry : summaryMap.entrySet()) {
             System.out.println(entry.getKey() + "\t" + (entry.getValue() / NUMBER_OF_RUNS));
         }

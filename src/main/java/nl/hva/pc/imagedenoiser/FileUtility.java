@@ -25,8 +25,8 @@ public class FileUtility {
         try {
             if (f.mkdir())
                 System.out.println("Successfully created directory " + folderName);
-            else
-                System.out.println("Directory " + folderName + " already exist.");
+            // else
+            //     System.out.println("Directory " + folderName + " already exist.");
         } catch (Exception e) {
             System.out.println(e);
         }
@@ -55,7 +55,7 @@ public class FileUtility {
             try {
                 Files.createDirectory(fileSystem.getPath(uncompressedDirectory));
             } catch (Exception e) {
-                System.out.println(e);
+                // System.out.println(e);
             }
 
             // Iterate over entries
