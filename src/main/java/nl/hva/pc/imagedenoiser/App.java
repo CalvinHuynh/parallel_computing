@@ -57,7 +57,7 @@ public class App {
             // Create a new LinkedBlockingQueue that contains all the paths to the images
             LinkedBlockingQueue<String> pathsQueue = (Files
                     .walk(Paths.get("resources/image_dataset_10/splitted_images")).filter(Files::isRegularFile)
-                    .map(result -> result.toString())).collect(Collectors.toCollection(LinkedBlockingQueue::new));
+                    .map(result -> result.toString())).collect(Collectors.toCollection(() -> new LinkedBlockingQueue<>()));
 
             // Insert the current run number as key and let the treemap be empty
             statisticsMap.put(i + 1, null);

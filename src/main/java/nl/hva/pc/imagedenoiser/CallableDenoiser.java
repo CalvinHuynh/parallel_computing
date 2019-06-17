@@ -1,8 +1,6 @@
 package nl.hva.pc.imagedenoiser;
 
 import java.util.HashMap;
-// import java.util.List;
-// import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Callable;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
