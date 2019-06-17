@@ -11,6 +11,7 @@ import java.util.TreeMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -35,17 +36,11 @@ public class App {
         // ROW_SIZE and COL_SIZE form the raster to split the images
         final int ROW_SIZE = 3;
         final int COL_SIZE = 3;
-        final int NUMBER_OF_THREADS = 2;
-        final int NUMBER_OF_RUNS = 2;
+        final int NUMBER_OF_THREADS = 4;
+        final int NUMBER_OF_RUNS = 1;
         // Used to store the results of the denoising
         HashMap<Integer, TreeMap<String, Long>> statisticsMap = new HashMap<>();
         HashMap<String, Long> summaryMap = new HashMap<>();
-        // Map<String, Long> statisticsMap = new TreeMap<>();
-        int minItemsPerThread;
-        int maxItemsPerThread;
-        // number of threads that can use the maxItemsPerThread value
-        int threadsWithMaxItems;
-        int startOfList = 0;
         long startProcessingTime = 0l;
         long totalProcessingTime = 0l;
         Image image = new Image();
@@ -56,32 +51,28 @@ public class App {
         image.ImageSplitter("resources/image_dataset_10/input_images", "resources/image_dataset_10/splitted_images",
                 ROW_SIZE, COL_SIZE, false);
 
-        List<String> pathList = (Files.walk(Paths.get("resources/image_dataset_10/splitted_images"))
-                .filter(Files::isRegularFile).map(result -> result.toString())).collect(Collectors.toList());
-
-        minItemsPerThread = pathList.size() / NUMBER_OF_THREADS;
-        maxItemsPerThread = minItemsPerThread + 1;
-        threadsWithMaxItems = pathList.size() - NUMBER_OF_THREADS * minItemsPerThread;
-
         // Outer loop for running the test multiple times.
-        // The outer loop is placed here, because we are only measuring the time it
-        // takes to denoise the image.
+        // The outer loop is placed here, because we are only measuring the time it takes to denoise the image.
         for (int i = 0; i < NUMBER_OF_RUNS; i++) {
+            // Create a new LinkedBlockingQueue that contains all the paths to the images
+            LinkedBlockingQueue<String> pathsQueue = (Files
+                    .walk(Paths.get("resources/image_dataset_10/splitted_images")).filter(Files::isRegularFile)
+                    .map(result -> result.toString())).collect(Collectors.toCollection(LinkedBlockingQueue::new));
+
             // Insert the current run number as key and let the treemap be empty
             statisticsMap.put(i + 1, null);
             ExecutorService executorService = Executors.newFixedThreadPool(NUMBER_OF_THREADS);
             System.out.println("Currently on run " + (i + 1));
             List<CallableDenoiser> taskList = new ArrayList<>();
+            // Spawn the number of threads
             for (int j = 0; j < NUMBER_OF_THREADS; j++) {
-                int itemsCount = (j < threadsWithMaxItems ? maxItemsPerThread : minItemsPerThread);
-                int endOfList = startOfList + itemsCount;
-                CallableDenoiser callableDenoiser = new CallableDenoiser("thread_" + j,
-                        pathList.subList(startOfList, endOfList), "resources/image_dataset_10/denoised_images", false);
+                CallableDenoiser callableDenoiser = new CallableDenoiser("thread_" + j, pathsQueue,
+                        "resources/image_dataset_10/denoised_images", true);
                 taskList.add(callableDenoiser);
-                startOfList = endOfList;
             }
 
             startProcessingTime = System.nanoTime();
+            // Start all the threads
             List<Future<HashMap<String, Long>>> futureHashMaps = executorService.invokeAll(taskList);
             HashMap<String, Long> futuresResolvedMap = new HashMap<>();
             for (Future<HashMap<String, Long>> futureHashMap : futureHashMaps) {
@@ -129,7 +120,6 @@ public class App {
             System.out.println("Sum of total time taken by threads " + totalTimeTaken + " milliseconds.");
             System.out.println("Total processing time is: "
                     + TimeUnit.MILLISECONDS.convert(totalProcessingTime, TimeUnit.NANOSECONDS) + " milliseconds.");
-            startOfList = 0; // reset the list index
         }
 
         image.ImageMerger("resources/image_dataset_10/denoised_images", "resources/image_dataset_10/output_images",
@@ -152,7 +142,8 @@ public class App {
         TreeMap<String, Long> sortedSummaryMap = new TreeMap<>(new NumberAwareComparator(NUMBER_COMPARATOR_PATTERN));
         sortedSummaryMap.putAll(summaryMap);
 
-        System.out.println("Summarized values from all runs are");
+        String threadForm = NUMBER_OF_THREADS >= 2 ? "threads" : "thread";
+        System.out.println("Summarized values from all runs with " + NUMBER_OF_THREADS + " " + threadForm + " are:");
         for (Map.Entry<String, Long> entry : summaryMap.entrySet()) {
             System.out.println(entry.getKey() + "\t" + (entry.getValue() / NUMBER_OF_RUNS));
         }
