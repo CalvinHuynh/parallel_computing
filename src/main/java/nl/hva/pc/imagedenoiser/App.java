@@ -30,27 +30,29 @@ public class App {
 
         final Pattern NUMBER_COMPARATOR_PATTERN = Pattern.compile("(\\D*)(\\d*)");
         final Pattern NUMBERS = Pattern.compile("\\d+");
-        // ROW_SIZE and COL_SIZE form the raster to split the images
-        final int ROW_SIZE = 3;
-        final int COL_SIZE = 3;
-        final int NUMBER_OF_IMAGES = 10;
-        final int NUMBER_OF_PRODUCERS = 1;
-        final int NUMBER_OF_RUNS = 10;
-        int NUMBER_OF_CONSUMERS = 3;
-        int QUEUE_LIMIT = ROW_SIZE * COL_SIZE * NUMBER_OF_IMAGES;
-
         final String ZIP_SOURCE = "image_dataset_10.zip";
         final String ZIP_DESTINATION = "resources/";
         final String INPUT_IMAGES_FOLDER = "resources/image_dataset_10/input_images";
         final String SPLITTED_IMAGES_FOLDER = "resources/image_dataset_10/splitted_images";
         final String DENOISED_IMAGES_FOLDER = "resources/image_dataset_10/denoised_images";
+        // ROW_SIZE and COL_SIZE form the raster to split the images
+        int ROW_SIZE = 3;
+        int COL_SIZE = 3;
+        int NUMBER_OF_RUNS = 2;
+        // Let 1 thread handle the IO requests
+        // When running multiple producers, multiple copies of the same file will be added to the queue
+        int NUMBER_OF_PRODUCERS = 1;
+        int NUMBER_OF_CONSUMERS = 3;
+        int TOTAL_NUMBER_OF_THREADS = NUMBER_OF_PRODUCERS + NUMBER_OF_CONSUMERS;
+        // int QUEUE_LIMIT = ROW_SIZE * COL_SIZE * NUMBER_OF_IMAGES;
+        int QUEUE_LIMIT = 10;
+
         // Used to store the results of the denoising
         HashMap<Integer, TreeMap<String, Long>> statisticsMap = new HashMap<>();
         HashMap<String, Long> summaryMap = new HashMap<>();
         long startProcessingTime = 0l;
         long totalProcessingTime = 0l;
-        if (NUMBER_OF_PRODUCERS > Runtime.getRuntime().availableProcessors()
-                || NUMBER_OF_CONSUMERS > Runtime.getRuntime().availableProcessors()) {
+        if (TOTAL_NUMBER_OF_THREADS > Runtime.getRuntime().availableProcessors()) {
             System.out.println("WARNING...\n"
                     + "You are trying to run the application with more cores than the maximum available cores");
         }
@@ -65,24 +67,16 @@ public class App {
         // The outer loop is placed here, because we are only measuring the time it
         // takes to denoise the image.
         for (int i = 0; i < NUMBER_OF_RUNS; i++) {
-            // // Create a new LinkedBlockingQueue that contains all the paths to the images
-            // LinkedBlockingQueue<String> pathsQueue =
-            // (Files.walk(Paths.get(FOLDER_OUTPUT_PATH))
-            // .filter(Files::isRegularFile).map(result -> result.toString()))
-            // .collect(Collectors.toCollection(() -> new LinkedBlockingQueue<>()));
-
             LinkedBlockingQueue<String> pathsQueue = new LinkedBlockingQueue<>(QUEUE_LIMIT);
 
-            // Insert the current run number as key and let the treemap be empty
-            statisticsMap.put(i + 1, null);
-            ExecutorService executorService = Executors.newFixedThreadPool(NUMBER_OF_CONSUMERS);
+            ExecutorService executorService = Executors.newFixedThreadPool(TOTAL_NUMBER_OF_THREADS);
             System.out.println("Currently on run " + (i + 1));
 
             List<Producer> producerList = new ArrayList<>();
             List<CallableDenoiser> consumerList = new ArrayList<>();
             // Spawn the number of producers
             for (int j = 0; j < NUMBER_OF_PRODUCERS; j++) {
-                Producer producer = new Producer(j, SPLITTED_IMAGES_FOLDER, pathsQueue);
+                Producer producer = new Producer(j, SPLITTED_IMAGES_FOLDER, pathsQueue, true);
                 producerList.add(producer);
             }
 
@@ -91,8 +85,10 @@ public class App {
                 executorService.execute(producer);
             }
 
-            // Spawn the number of consumers
-            for (int k = 0; k < NUMBER_OF_CONSUMERS; k++) {
+            // Spawn the maxumum number of threads
+            // If the producer has finished it's task, it will return to the pool and start running
+            // the callable denoiser task.
+            for (int k = 0; k < TOTAL_NUMBER_OF_THREADS; k++) {
                 CallableDenoiser callableDenoiser = new CallableDenoiser("thread_" + k, pathsQueue,
                         DENOISED_IMAGES_FOLDER, false);
                 consumerList.add(callableDenoiser);

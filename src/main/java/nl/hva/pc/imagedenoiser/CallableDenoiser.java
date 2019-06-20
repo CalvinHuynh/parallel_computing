@@ -21,14 +21,16 @@ public class CallableDenoiser implements Callable<HashMap<String, Long>> {
     private int numberOfImagesDenoised = 0;
 
     /**
-     * CallableDenoiser denoises the items that are given in the queue and writes it to the specified output path
+     * CallableDenoiser denoises the items that are given in the queue and writes it
+     * to the specified output path
+     * 
      * @param threadIdentifier Identifier to identify which thread denoised which
      *                         part of the image
      * @param imageQueue       Queue that contains the path to the images
      * @param fileOutputPath   Path to write the denoised images to
      * @param showAllOutput    Prints the intermediate output
      */
-    public CallableDenoiser(String threadIdentifier,LinkedBlockingQueue<String> imageQueue, String fileOutputPath,
+    public CallableDenoiser(String threadIdentifier, LinkedBlockingQueue<String> imageQueue, String fileOutputPath,
             Boolean showAllOutput) {
         this.threadIdentifier = threadIdentifier;
         this.queue = imageQueue;
@@ -55,19 +57,22 @@ public class CallableDenoiser implements Callable<HashMap<String, Long>> {
         // Creates a folder for the output
         fileHelper.CreateFolder(fileOutputPath);
 
-        while(!queue.isEmpty()) {
+        while (!queue.isEmpty()) {
             try {
                 String pathToImage = queue.take();
-                // System.out.println("Consumer " + threadIdentifier + " took file " + pathToImage + " from the queue");
+                if (showAllOutput) {
+                    System.out
+                            .println("Consumer " + threadIdentifier + " took file " + pathToImage + " from the queue");
+                }
                 String nameOfImage = pathToImage.toString().substring(pathToImage.toString().lastIndexOf("/") + 1);
                 if (nameOfImage.substring(nameOfImage.lastIndexOf(".") + 1).toLowerCase().matches("jpg|png")) {
                     // Retrieves the number of the image at the first underscore and last underscore
                     // to create an unique id
-                    String idOfImage = nameOfImage.substring(0, nameOfImage.indexOf("_")) + "_"
-                            + nameOfImage.substring(0, nameOfImage.indexOf(".")).substring(nameOfImage.lastIndexOf("_") + 1)
-                            + "_" + threadIdentifier;
+                    String idOfImage = nameOfImage.substring(0, nameOfImage.indexOf("_")) + "_" + nameOfImage
+                            .substring(0, nameOfImage.indexOf(".")).substring(nameOfImage.lastIndexOf("_") + 1) + "_"
+                            + threadIdentifier;
                     String outputImageName = nameOfImage.replace(targetToReplace, replacementText);
-    
+
                     // Reset stopwatch
                     stopwatch.start();
                     // Loads image from path
@@ -93,7 +98,7 @@ public class CallableDenoiser implements Callable<HashMap<String, Long>> {
                 }
             } catch (Error e) {
                 System.out.println("Error has occured: " + e);
-            }    
+            }
         }
 
         long totalTimeTaken = 0l;
@@ -101,9 +106,9 @@ public class CallableDenoiser implements Callable<HashMap<String, Long>> {
             totalTimeTaken += time;
         }
         if (showAllOutput) {
-            System.out.println(threadIdentifier + " took "
-                    + TimeUnit.MILLISECONDS.convert(totalTimeTaken, TimeUnit.NANOSECONDS)
-                    + " milliseconds to denoise " + numberOfImagesDenoised + " images");
+            System.out.println(
+                    threadIdentifier + " took " + TimeUnit.MILLISECONDS.convert(totalTimeTaken, TimeUnit.NANOSECONDS)
+                            + " milliseconds to denoise " + numberOfImagesDenoised + " images");
         }
         return idAndTimeMap;
     };
