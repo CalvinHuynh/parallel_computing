@@ -55,7 +55,7 @@ public class CallableDenoiser implements Callable<HashMap<String, Long>> {
         // Loads in the OpenCV library
         nu.pattern.OpenCV.loadShared();
         // Creates a folder for the output
-        fileHelper.CreateFolder(fileOutputPath);
+        fileHelper.createFolder(fileOutputPath);
 
         while (!queue.isEmpty()) {
             try {

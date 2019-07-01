@@ -20,7 +20,7 @@ public class FileUtility {
      * 
      * @param folderName name of the folder
      */
-    public void CreateFolder(String folderName) {
+    public void createFolder(String folderName) {
         File f = new File(folderName);
         try {
             if (f.mkdir())
@@ -41,7 +41,7 @@ public class FileUtility {
      * @param destination   destination of the unzipped content
      * @param showAllOutput Prints the intermediate output
      */
-    public void Unzip(String zipPath, String destination, Boolean showAllOutput) {
+    public void unzip(String zipPath, String destination, Boolean showAllOutput) {
         if (destination == null || destination.trim().isEmpty()) {
             destination = "resources/";
         }
