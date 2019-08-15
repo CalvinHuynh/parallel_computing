@@ -88,8 +88,8 @@ public class Server implements Serializable {
         // Let 1 thread handle the IO requests
         // When running multiple producers, multiple copies of the same file will be added to the queue
         int numberOfProducers = 1;
-        int numberOfConsumers = 3;
-        int totalNumberOfThreads = numberOfProducers + numberOfConsumers;
+        // int numberOfConsumers = 3;
+        int totalNumberOfThreads = numberOfProducers /*+ numberOfConsumers*/;
         int queueLimit = rowSize * colSize * 10;
         // int queueLimit = 10;
 
@@ -214,9 +214,9 @@ public class Server implements Serializable {
         TreeMap<String, Long> sortedSummaryMap = new TreeMap<>(new NumberAwareComparator(NUMBER_COMPARATOR_PATTERN));
         sortedSummaryMap.putAll(summaryMap);
 
-        String threadForm = numberOfConsumers >= 2 ? "threads" : "thread";
-        System.out.println("Summarized values from all runs with " + numberOfConsumers + " " +
-            threadForm + " are:");
+        // String threadForm = numberOfConsumers >= 2 ? "threads" : "thread";
+        // System.out.println("Summarized values from all runs with " + numberOfConsumers + " " +
+        //     threadForm + " are:");
         for (Map.Entry<String, Long> entry : summaryMap.entrySet()) {
             System.out.println(entry.getKey() + "\t" + (entry.getValue() / numberOfRuns));
         }
