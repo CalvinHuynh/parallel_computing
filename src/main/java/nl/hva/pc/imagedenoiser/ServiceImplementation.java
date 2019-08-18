@@ -8,8 +8,8 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
+import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Queue;
 import java.util.concurrent.TimeUnit;
 
 import org.opencv.core.Mat;
@@ -77,10 +77,11 @@ public class ServiceImplementation extends UnicastRemoteObject implements Servic
     }
 
     @Override
-    public HashMap<String, Long> denoiseImage(String identifier, Queue<String> imageQueue, String outputPath,
-            Boolean showAllOutput) throws Exception {
+    public ArrayList<Object> denoiseImage(String identifier, String pathToImage, String outputPath,
+            Boolean showAllOutput) throws RemoteException {
         int numberOfImagesDenoised = 0;
-
+        
+        ArrayList<Object> resultarrayList = new ArrayList<>();
         FileUtility fileHelper = new FileUtility();
         HashMap<String, Long> idAndTimeMap = new HashMap<>();
         Stopwatch stopwatch = new Stopwatch();
@@ -97,11 +98,10 @@ public class ServiceImplementation extends UnicastRemoteObject implements Servic
         // Creates a folder for the output
         fileHelper.createFolder(outputPath);
 
-        while (!imageQueue.isEmpty()) {
+        while (pathToImage.trim() != null || !pathToImage.isEmpty()) {
             try {
-                String pathToImage = imageQueue.remove();
                 if (showAllOutput) {
-                    System.out.println(identifier + " took file " + pathToImage + " from the imageQueue");
+                    System.out.println(identifier + " is trying to denoise " + pathToImage);
                 }
                 String nameOfImage = pathToImage.toString().substring(pathToImage.toString().lastIndexOf("/") + 1);
                 if (nameOfImage.substring(nameOfImage.lastIndexOf(".") + 1).toLowerCase().matches("jpg|png")) {
@@ -111,6 +111,8 @@ public class ServiceImplementation extends UnicastRemoteObject implements Servic
                             .substring(0, nameOfImage.indexOf(".")).substring(nameOfImage.lastIndexOf("_") + 1) + "_"
                             + identifier;
                     String outputImageName = nameOfImage.replace(targetToReplace, replacementText);
+
+                    resultarrayList.add(outputImageName);
 
                     // Reset stopwatch
                     stopwatch.start();
@@ -149,7 +151,9 @@ public class ServiceImplementation extends UnicastRemoteObject implements Servic
                     .println(identifier + " took " + TimeUnit.MILLISECONDS.convert(totalTimeTaken, TimeUnit.NANOSECONDS)
                             + " milliseconds to denoise " + numberOfImagesDenoised + " images");
         }
-        return idAndTimeMap;
+
+        resultarrayList.add(idAndTimeMap);
+        return resultarrayList;
     }
 
     @Override
@@ -158,7 +162,19 @@ public class ServiceImplementation extends UnicastRemoteObject implements Servic
     }
 
     @Override
-    public String takeItemFromQueue() throws InterruptedException {
-        return Server.pathsQueue.take();
+    public String takeItemFromQueue() throws RemoteException {
+        try {
+            return Server.pathsQueue.take();
+        } catch (InterruptedException e) {
+            // e.printStackTrace();
+            System.out.println("Error has occured: " + e);
+        }
+        return null;
+    }
+
+    @Override
+    public boolean removeDirectoryOrFile(String serverPath) throws RemoteException {
+        File serverPathDirectoryOrFile = new File(serverPath);
+		return serverPathDirectoryOrFile.delete();
     }
 }

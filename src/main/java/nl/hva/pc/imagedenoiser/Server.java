@@ -14,7 +14,6 @@ import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
@@ -55,7 +54,7 @@ public class Server implements Serializable {
     public static final String SERVICE_NAME = "ImageDenoiser";
     public static final int PORT_NUMBER = 1234;
     public static LinkedBlockingQueue<String> pathsQueue;
-    public static ConcurrentHashMap<String, Long> resultMap;
+    public static ConcurrentHashMap<String, Long> resultMap = new ConcurrentHashMap<>();
 
     private static void serverSetup() {
         try {
@@ -99,8 +98,7 @@ public class Server implements Serializable {
         int numberOfProducers = 1;
         // int numberOfConsumers = 3;
         int totalNumberOfThreads = numberOfProducers /*+ numberOfConsumers*/;
-        int queueLimit = rowSize * colSize * 10;
-        // int queueLimit = 10;
+        int totalNumberOfImages = rowSize * colSize * 10;
 
         // Used to store the results of the denoising
         HashMap<Integer, TreeMap<String, Long>> statisticsMap = new HashMap<>();
@@ -119,13 +117,14 @@ public class Server implements Serializable {
         image.splitImages(INPUT_IMAGES_FOLDER, SPLITTED_IMAGES_FOLDER, rowSize, colSize, false);
 
         // Setup the server
+        System.out.println("Setting up server");
         serverSetup();
 
         // Outer loop for running the test multiple times.
         // The outer loop is placed here, because we are only measuring the time it
         // takes to denoise the image.
         for (int i = 0; i < numberOfRuns; i++) {
-            pathsQueue = new LinkedBlockingQueue<>(queueLimit);
+            pathsQueue = new LinkedBlockingQueue<>(totalNumberOfImages);
 
             ExecutorService executorService = Executors.newFixedThreadPool(numberOfProducers);
             System.out.println("Currently on run " + (i + 1));
@@ -142,6 +141,7 @@ public class Server implements Serializable {
             for (Producer producer : producerList) {
                 executorService.execute(producer);
             }
+            startProcessingTime = System.nanoTime();
 
             // // Spawn the maxumum number of threads
             // // If the producer has finished it's task, it will return to the pool and start running
@@ -152,7 +152,6 @@ public class Server implements Serializable {
             //     consumerList.add(callableDenoiser);
             // }
 
-            startProcessingTime = System.nanoTime();
             // // Start all consumers
             // List<Future<HashMap<String, Long>>> futureHashMaps = executorService.invokeAll(consumerList);
             // HashMap<String, Long> futuresResolvedMap = new HashMap<>();
@@ -160,6 +159,15 @@ public class Server implements Serializable {
             //     futuresResolvedMap.putAll(futureHashMap.get());
             // }
 
+            // System.out.println("printing queue");
+            // System.out.println(pathsQueue);
+            // System.out.println("size of the queue is " + pathsQueue.size());
+
+            while(resultMap.size() != totalNumberOfImages) {
+                System.out.println("Number of items in queue is " + pathsQueue.size());
+                System.out.println("Number of key value mapping is " + resultMap.size());
+                Thread.sleep(500);
+            }
             executorService.shutdown();
             if (!executorService.isTerminated()) {
                 System.out.println("Waiting for termination...");
@@ -169,6 +177,7 @@ public class Server implements Serializable {
                 System.out.println("Executor service has been terminated");
                 totalProcessingTime = System.nanoTime() - startProcessingTime;
             }
+
             // Sort the hashmap
             Map<String, Long> sortedMap = new TreeMap<>(new NumberAwareComparator(NUMBER_COMPARATOR_PATTERN));
             sortedMap.putAll(resultMap);

@@ -2,8 +2,7 @@ package nl.hva.pc.imagedenoiser;
 
 import java.rmi.Remote;
 import java.rmi.RemoteException;
-import java.util.HashMap;
-import java.util.Queue;
+import java.util.ArrayList;
 
 public interface ServiceInterface extends Remote {
     /**
@@ -20,7 +19,7 @@ public interface ServiceInterface extends Remote {
      * Downloads the image from the server
      * 
      * @param serverPath Path to file
-     * @return
+     * @return 
      * @throws RemoteException
      */
     byte[] downloadImageFromServer(String serverPath) throws RemoteException;
@@ -36,23 +35,23 @@ public interface ServiceInterface extends Remote {
     /**
      * Tries to take an item from an atomic queue
      * 
-     * @return item from queue
+     * @return an item from queue
      * @throws InterruptedException
      */
-    String takeItemFromQueue() throws InterruptedException;
+    String takeItemFromQueue() throws RemoteException;
 
     /**
      * Denoises the images that reside in the queue
      * 
      * @param identifier    Identifier of the client
-     * @param imageQueue    Image queue
+     * @param pathToImage   Path to image
      * @param outputPath    Output path for the images
      * @param showAllOutput Shows debugging information
-     * @return a summary of the time taken
+     * @return an ArrayList that contains the denoised image name and a HashMap of the time taken denoising the image
      * @throws Exception
      */
-    HashMap<String, Long> denoiseImage(String identifier, Queue<String> imageQueue, String outputPath,
-            Boolean showAllOutput) throws Exception;
+    ArrayList<Object> denoiseImage(String identifier, String pathToImage, String outputPath,
+            Boolean showAllOutput) throws RemoteException;
 
     /**
      * Pushes the result to the server
@@ -60,5 +59,14 @@ public interface ServiceInterface extends Remote {
      * @param key   Identifier of the client
      * @param value Total time taken in Long
      */
-    void pushResultToServer(String key, Long value);
+    void pushResultToServer(String key, Long value) throws RemoteException;
+
+    /**
+     * Removes a directory or a file
+     * 
+     * @param serverPath Path to file or directory
+     * @return a boolean whether the file or directory has been deleted
+     * @throws RemoteException
+     */
+    boolean removeDirectoryOrFile(String serverPath) throws RemoteException;
 }
