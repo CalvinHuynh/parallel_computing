@@ -1,5 +1,7 @@
 package nl.hva.pc.imagedenoiser;
 
+import static nu.pattern.OpenCV.loadShared;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -94,7 +96,7 @@ public class ServiceImplementation extends UnicastRemoteObject implements Servic
         String replacementText = "Denoised";
 
         // Loads in the OpenCV library
-        nu.pattern.OpenCV.loadShared();
+        loadShared();
         // Creates a folder for the output
         fileHelper.createFolder(outputPath);
 

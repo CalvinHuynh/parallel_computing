@@ -23,7 +23,7 @@ public class Client {
 		String clientPath = "/home/calvin/Downloads/";
 		String clientOutputPath = clientPath + "denoised_images/";
 		// download images from this path
-		String serverResourcesPath = "/home/calvin/Projects/Parallel-Computing/parallel_computing/resources/image_dataset_10/input_images/";
+		String serverResourcesPath = "/home/calvin/Projects/Parallel-Computing/parallel_computing/resources/image_dataset_10/splitted_images/";
 		// upload denoised image to this path
 		String serverOutputPath = "/home/calvin/Projects/Parallel-Computing/parallel_computing/resources/image_dataset_10/denoised_images/";
 		String upload = "upload";
@@ -50,11 +50,13 @@ public class Client {
 					clientIdentifier = args[1];
 					serverOutputPath = args[2];
 					clientPath = args[3];
-				case 1:
+				case 2:
 					clientIdentifier = args[1];
 				default:
-					System.out.println("\"start\" command requires 3 arguments to overwrite default values");
+					System.out.println("\"start\" command requires 4 arguments to overwrite default values");
 				}
+
+				System.out.println("Client identifier is " + clientIdentifier);
 
 				ArrayList<Object> resultArrayList = new ArrayList<>();
 				HashMap<String, Long> resultMap = new HashMap<>();
@@ -63,9 +65,13 @@ public class Client {
 
 					//#region Download image from server
 					String itemFromQueue = stub.takeItemFromQueue();
+					System.out.println("Taken item from queue is " + itemFromQueue);
 					String nameOfImage = itemFromQueue.toString()
 							.substring(itemFromQueue.toString().lastIndexOf("/") + 1);
-					byte[] data = stub.downloadImageFromServer(serverResourcesPath + itemFromQueue);
+					System.out.println("Name of image is " + nameOfImage);
+					System.out.println("Trying to download image from server");
+					System.out.println("Path is: " + serverResourcesPath + nameOfImage);
+					byte[] data = stub.downloadImageFromServer(serverResourcesPath + nameOfImage);
 					// Write image to local folder
 					File clientPathFile = new File(clientPath + nameOfImage);
 					FileOutputStream out = new FileOutputStream(clientPathFile);
@@ -155,7 +161,7 @@ public class Client {
 		//#endregion 
 		} catch (Exception e) {
 			e.printStackTrace();
-			System.out.println("error with connection or command. Check your hostname or command");
+			System.out.println("An error has occured." + "\n" + e);
 		}
 	}
 }
