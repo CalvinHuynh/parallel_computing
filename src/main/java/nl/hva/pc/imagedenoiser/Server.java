@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.TreeMap;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -31,11 +32,18 @@ public class Server implements Serializable {
      * This class should be the server, since this holds the queue of all the
      * images. The client signs in/ tells the server that it is ready to denoise
      * images The server should send a part of the image over to the client The
-     * client should either: 1. - Write the send image to disk - Read the freshly
-     * written image - Denoise the image - Write the image to disk - Send the
-     * freshly denoised image back to server 2. - Write image to buffer - Denoise
-     * image from buffer - Send denoised buffer back to server - Server writes
-     * buffer to disk
+     * client should either: 
+     * 1. 
+     * - Write the send image to disk
+     * - Read the freshly written image 
+     * - Denoise the image 
+     * - Write the image to disk 
+     * - Send the freshly denoised image back to server 
+     * 2.
+     * - Write image to buffer
+     * - Denoise image from buffer 
+     * - Send denoised buffer back to server 
+     * - Server writes buffer to disk
      */
 
     private static final long serialVersionUID = -1666295165216198133L;
@@ -47,6 +55,7 @@ public class Server implements Serializable {
     public static final String SERVICE_NAME = "ImageDenoiser";
     public static final int PORT_NUMBER = 1234;
     public static LinkedBlockingQueue<String> pathsQueue;
+    public static ConcurrentHashMap<String, Long> resultMap;
 
     private static void serverSetup() {
         try {
@@ -80,7 +89,7 @@ public class Server implements Serializable {
         final String ZIP_DESTINATION = "resources/";
         final String INPUT_IMAGES_FOLDER = "resources/image_dataset_10/input_images";
         final String SPLITTED_IMAGES_FOLDER = "resources/image_dataset_10/splitted_images";
-        final String DENOISED_IMAGES_FOLDER = "resources/image_dataset_10/denoised_images";
+        // final String DENOISED_IMAGES_FOLDER = "resources/image_dataset_10/denoised_images";
         // rowSize and colSize form the raster to split the images
         int rowSize = 3;
         int colSize = 3;
@@ -122,7 +131,7 @@ public class Server implements Serializable {
             System.out.println("Currently on run " + (i + 1));
 
             List<Producer> producerList = new ArrayList<>();
-            List<CallableDenoiser> consumerList = new ArrayList<>();
+            // List<CallableDenoiser> consumerList = new ArrayList<>();
             // Spawn the number of producers
             for (int j = 0; j < numberOfProducers; j++) {
                 Producer producer = new Producer(j, SPLITTED_IMAGES_FOLDER, pathsQueue, true);
@@ -134,22 +143,22 @@ public class Server implements Serializable {
                 executorService.execute(producer);
             }
 
-            // Spawn the maxumum number of threads
-            // If the producer has finished it's task, it will return to the pool and start running
-            // the callable denoiser task.
-            for (int k = 0; k < totalNumberOfThreads; k++) {
-                CallableDenoiser callableDenoiser = new CallableDenoiser("thread_" + k, pathsQueue,
-                        DENOISED_IMAGES_FOLDER, false);
-                consumerList.add(callableDenoiser);
-            }
+            // // Spawn the maxumum number of threads
+            // // If the producer has finished it's task, it will return to the pool and start running
+            // // the callable denoiser task.
+            // for (int k = 0; k < totalNumberOfThreads; k++) {
+            //     CallableDenoiser callableDenoiser = new CallableDenoiser("thread_" + k, pathsQueue,
+            //             DENOISED_IMAGES_FOLDER, false);
+            //     consumerList.add(callableDenoiser);
+            // }
 
             startProcessingTime = System.nanoTime();
-            // Start all consumers
-            List<Future<HashMap<String, Long>>> futureHashMaps = executorService.invokeAll(consumerList);
-            HashMap<String, Long> futuresResolvedMap = new HashMap<>();
-            for (Future<HashMap<String, Long>> futureHashMap : futureHashMaps) {
-                futuresResolvedMap.putAll(futureHashMap.get());
-            }
+            // // Start all consumers
+            // List<Future<HashMap<String, Long>>> futureHashMaps = executorService.invokeAll(consumerList);
+            // HashMap<String, Long> futuresResolvedMap = new HashMap<>();
+            // for (Future<HashMap<String, Long>> futureHashMap : futureHashMaps) {
+            //     futuresResolvedMap.putAll(futureHashMap.get());
+            // }
 
             executorService.shutdown();
             if (!executorService.isTerminated()) {
@@ -162,7 +171,9 @@ public class Server implements Serializable {
             }
             // Sort the hashmap
             Map<String, Long> sortedMap = new TreeMap<>(new NumberAwareComparator(NUMBER_COMPARATOR_PATTERN));
-            sortedMap.putAll(futuresResolvedMap);
+            sortedMap.putAll(resultMap);
+            // Clear the map
+            resultMap.clear();
 
             long totalTimeTaken = 0l;
             String id = "";

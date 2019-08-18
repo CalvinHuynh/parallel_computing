@@ -101,7 +101,7 @@ public class ServiceImplementation extends UnicastRemoteObject implements Servic
             try {
                 String pathToImage = imageQueue.remove();
                 if (showAllOutput) {
-                    System.out.println("Consumer " + identifier + " took file " + pathToImage + " from the imageQueue");
+                    System.out.println(identifier + " took file " + pathToImage + " from the imageQueue");
                 }
                 String nameOfImage = pathToImage.toString().substring(pathToImage.toString().lastIndexOf("/") + 1);
                 if (nameOfImage.substring(nameOfImage.lastIndexOf(".") + 1).toLowerCase().matches("jpg|png")) {
@@ -123,7 +123,7 @@ public class ServiceImplementation extends UnicastRemoteObject implements Servic
                     // Stop the stopwatch after writing the image to the output folder
                     long elapsedTime = stopwatch.elapsedTime();
                     if (showAllOutput) {
-                        System.out.println("It took thread " + identifier + " "
+                        System.out.println("It took consumer" + identifier + " "
                                 + TimeUnit.MILLISECONDS.convert(elapsedTime, TimeUnit.NANOSECONDS)
                                 + " milliseconds to denoise the image " + nameOfImage
                                 + ". Output image has been saved with the name " + outputImageName);
@@ -152,4 +152,13 @@ public class ServiceImplementation extends UnicastRemoteObject implements Servic
         return idAndTimeMap;
     }
 
+    @Override
+    public void pushResultToServer(String key, Long value) {
+        Server.resultMap.put(key, value);
+    }
+
+    @Override
+    public String takeItemFromQueue() throws InterruptedException {
+        return Server.pathsQueue.take();
+    }
 }

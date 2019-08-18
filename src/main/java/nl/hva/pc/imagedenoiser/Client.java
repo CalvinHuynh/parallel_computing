@@ -16,8 +16,9 @@ public class Client {
 		String environment;
 		String host = Server.HOST_NAME;
 		int port = Server.PORT_NUMBER;
-		String clientpath = "~/Download/"; // save the downloaded images to the download folder
-		String serverpath = "/home/calvin/Projects/Parallel-Computing/parallel_computing/resources/image_dataset_10/denoised_images";
+		String clientIdentifier = "";
+		String clientPath = "~/Download/"; // save the downloaded images to the download folder
+		String serverPath = "/home/calvin/Projects/Parallel-Computing/parallel_computing/resources/image_dataset_10/denoised_images";
 		String upload = "upload";
 		String download = "download";
 		String start = "start";
@@ -39,26 +40,47 @@ public class Client {
 			Registry registry = LocateRegistry.getRegistry(host, port);
 			ServiceInterface stub = (ServiceInterface) registry.lookup(Server.SERVICE_NAME);
 
+			if (start.equals(args[0].toLowerCase())) {
+				switch (args.length) {
+					case 3:
+						clientIdentifier = args[1];
+						serverPath = args[2];
+						clientPath = args[3];
+					default:
+						System.out.println("\"start\" command requires 3 arguments");
+				}
+
+				while(!stub.checkIfQueueIsEmpty()) {
+					byte[] mydata = stub.downloadImageFromServer(stub.takeItemFromQueue());
+					// System.out.println("downloading...");
+					File clientPathFile = new File(clientPath);
+					FileOutputStream out = new FileOutputStream(clientPathFile);
+					out.write(mydata);
+					out.flush();
+					out.close();
+				}
+			}
+
 			// to upload a file
 			if (upload.equals(args[0])) {
 				switch (args.length) {
 				case 2:
-					clientpath = args[1];
-					serverpath = args[2];
+					clientPath = args[1];
+					serverPath = args[2];
 					break;
 				case 1:
-					clientpath = args[1];
+					clientPath = args[1];
 					break;
 				default:
 					break;
 				}
 
-				File clientpathfile = new File(clientpath);
-				byte[] mydata = new byte[(int) clientpathfile.length()];
-				FileInputStream in = new FileInputStream(clientpathfile);
+				File clientPathFile = new File(clientPath);
+				byte[] data = new byte[(int) clientPathFile.length()];
+				FileInputStream in = new FileInputStream(clientPathFile);
 				System.out.println("uploading to server...");
-				in.read(mydata, 0, mydata.length);
-				stub.uploadImageToServer(mydata, serverpath, (int) clientpathfile.length());
+				in.read(data, 0, data.length);
+				stub.uploadImageToServer(data, serverPath, (int) clientPathFile.length());
 
 				in.close();
 			}
@@ -66,19 +88,19 @@ public class Client {
 			if (download.equals(args[0])) {
 				switch (args.length) {
 				case 2:
-					serverpath = args[1];
-					clientpath = args[2];
+					serverPath = args[1];
+					clientPath = args[2];
 					break;
 				case 1:
-					serverpath = args[1];
+					serverPath = args[1];
 					break;
 				default:
 					break;
 				}
-				byte[] mydata = stub.downloadImageFromServer(serverpath);
+				byte[] mydata = stub.downloadImageFromServer(serverPath);
 				System.out.println("downloading...");
-				File clientpathfile = new File(clientpath);
-				FileOutputStream out = new FileOutputStream(clientpathfile);
+				File clientPathFiile = new File(clientPath);
+				FileOutputStream out = new FileOutputStream(clientPathFiile);
 				out.write(mydata);
 				out.flush();
 				out.close();
