@@ -46,7 +46,7 @@ public class Server implements Serializable {
     public static final String SERVICE_NAME = "ImageDenoiser";
     public static boolean SERVER_IS_READY = false;
     public static int SERVER_PORT_NUMBER = 1234;
-    public static int TOTAL_NUMBER_OF_RUNS = 2;
+    public static int TOTAL_NUMBER_OF_RUNS = 10;
     public static int CURRENT_RUN_NUMBER;
     public static LinkedBlockingQueue<String> PATH_QUEUE;
     public static ConcurrentHashMap<String, Long> RESULT_MAP = new ConcurrentHashMap<>();

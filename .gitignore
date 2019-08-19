@@ -14,3 +14,4 @@ target/
 .vscode/
 resources/
 *.zip
+*.sh
