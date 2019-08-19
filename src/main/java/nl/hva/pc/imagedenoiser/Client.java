@@ -14,10 +14,10 @@ import java.util.Map.Entry;
 public class Client {
 
 	public static void main(String[] args) throws RemoteException, UnknownHostException {
-		int numberOfRuns = Server.numberOfRuns;
+		int numberOfRuns = Server.TOTAL_NUMBER_OF_RUNS;
 		int currentRun = 0;
 		String host = Server.HOST_NAME;
-		int port = Server.serverPortNumber;
+		int port = Server.SERVER_PORT_NUMBER;
 		String clientIdentifier = "";
 		// save the downloaded images to the download folder
 		String clientPath = "/home/calvin/Downloads/";
@@ -27,38 +27,42 @@ public class Client {
 		// upload denoised image to this path
 		String serverOutputPath = "/home/calvin/Projects/Parallel-Computing/parallel_computing/resources/image_dataset_10/denoised_images/";
 
-		Boolean removeFileAfterDenoising = true;
-		Boolean showAllOutput = true;
+		boolean removeFileAfterDenoising = true;
+		boolean showAllOutput = false;
+
+		switch (args.length) {
+		case 3:
+			clientIdentifier = args[0];
+			serverOutputPath = args[1];
+			clientPath = args[2];
+			break;
+		case 1:
+			clientIdentifier = args[0];
+			break;
+		default:
+			System.out.println("Running with default variables");
+		}
 
 		while (currentRun < numberOfRuns) {
-			currentRun++;
-			System.out.println("Currently on run: " + currentRun);
 			try {
 				Registry registry = LocateRegistry.getRegistry(host, port);
 				ServiceInterface stub = (ServiceInterface) registry.lookup(Server.SERVICE_NAME);
-				switch (args.length) {
-				case 3:
-					clientIdentifier = args[0];
-					serverOutputPath = args[1];
-					clientPath = args[2];
-				case 1:
-					clientIdentifier = args[0];
-				default:
-					System.out.println("Running with default variables");
-				}
-
-				System.out.println("Client identifier is " + clientIdentifier);
 
 				ArrayList<Object> resultArrayList = new ArrayList<>();
 				HashMap<String, Long> resultMap = new HashMap<>();
 
-				System.out.println("Checking server variables..." + "\n" + "Server is ready to accept clients? "
-						+ stub.checkServerStatus());
+				while (stub.getServerRunNumber() != currentRun) {
+					if (showAllOutput) {
+						System.out.println("Server run number is " + stub.getServerRunNumber() + "\n"
+								+ "Current run number is " + currentRun);
+					}
+					Thread.sleep(500);
+				}
 
 				while (stub.checkServerStatus() == false) {
-					System.out.println("Inside while loop" + System.currentTimeMillis());
-					System.out.println("Checking server variables..." + "\n" + "Server is ready to accept clients? "
-							+ stub.checkServerStatus());
+					if (showAllOutput) {
+						System.out.println("Is the server ready to accecpt clients? " + stub.checkServerStatus());
+					}
 					Thread.sleep(1000);
 				}
 
@@ -73,13 +77,11 @@ public class Client {
 					File clientPathFile = new File(clientPath + nameOfImage);
 					FileOutputStream out = new FileOutputStream(clientPathFile);
 					out.write(data);
-					System.out.println("Downloaded image " + nameOfImage);
 					out.flush();
 					out.close();
 					// #endregion
 
 					// Denoise image and write result to a generic array list
-					System.out.println("Denoising image...");
 					resultArrayList = stub.denoiseImage(clientIdentifier, clientPath + nameOfImage, clientOutputPath,
 							showAllOutput);
 
@@ -97,7 +99,6 @@ public class Client {
 					FileInputStream in = new FileInputStream(clientPathFile);
 					in.read(data, 0, data.length);
 					stub.uploadImageToServer(data, serverOutputPath + nameOfImage, (int) clientPathFile.length());
-					System.out.println("Uploading image " + nameOfImage);
 					in.close();
 					// #endregion
 
@@ -114,9 +115,13 @@ public class Client {
 					}
 				}
 
+				currentRun++;
+				Thread.sleep(2500);
+
 			} catch (Exception e) {
 				e.printStackTrace();
 				System.out.println("An error has occured." + "\n" + e);
+				break;
 			}
 		}
 	}

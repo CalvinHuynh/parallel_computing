@@ -1,7 +1,6 @@
 package nl.hva.pc.imagedenoiser;
 
 import java.io.Serializable;
-import java.net.InetAddress;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
@@ -31,18 +30,11 @@ public class Server implements Serializable {
      * This class should be the server, since this holds the queue of all the
      * images. The client signs in/ tells the server that it is ready to denoise
      * images The server should send a part of the image over to the client The
-     * client should either: 
-     * 1. 
-     * - Write the send image to disk
-     * - Read the freshly written image 
-     * - Denoise the image 
-     * - Write the image to disk 
-     * - Send the freshly denoised image back to server 
-     * 2.
-     * - Write image to buffer
-     * - Denoise image from buffer 
-     * - Send denoised buffer back to server 
-     * - Server writes buffer to disk
+     * client should either: 1. - Write the send image to disk - Read the freshly
+     * written image - Denoise the image - Write the image to disk - Send the
+     * freshly denoised image back to server 2. - Write image to buffer - Denoise
+     * image from buffer - Send denoised buffer back to server - Server writes
+     * buffer to disk
      */
 
     private static final long serialVersionUID = -1666295165216198133L;
@@ -50,23 +42,24 @@ public class Server implements Serializable {
     public Server() throws RemoteException {
     }
 
-    public static final String HOST_NAME = "localhost.localdomain";
+    public static String HOST_NAME = "localhost.localdomain";
     public static final String SERVICE_NAME = "ImageDenoiser";
-    public static boolean serverIsReady = false;
-    public static int serverPortNumber = 1234;
-    public static int numberOfRuns = 2;
-    public static LinkedBlockingQueue<String> pathsQueue;
-    public static ConcurrentHashMap<String, Long> resultMap = new ConcurrentHashMap<>();
+    public static boolean SERVER_IS_READY = false;
+    public static int SERVER_PORT_NUMBER = 1234;
+    public static int TOTAL_NUMBER_OF_RUNS = 2;
+    public static int CURRENT_RUN_NUMBER;
+    public static LinkedBlockingQueue<String> PATH_QUEUE;
+    public static ConcurrentHashMap<String, Long> RESULT_MAP = new ConcurrentHashMap<>();
 
-    private static void serverSetup() {
+    private static void serverSetup(String hostname) {
         try {
-            String localHostname = InetAddress.getLocalHost().getHostName();
+            String localHostname = hostname;
 
             // Initialize the Service implementation
             ServiceImplementation impl = new ServiceImplementation();
-    
+
             // Creates the registry
-            Registry registry = LocateRegistry.createRegistry(Server.serverPortNumber);
+            Registry registry = LocateRegistry.createRegistry(Server.SERVER_PORT_NUMBER);
 
             // Bind the implementation to the registry
             registry.bind(Server.SERVICE_NAME, impl);
@@ -83,12 +76,18 @@ public class Server implements Serializable {
     // - NUMBER_OF_THREADS // maybe use a method to check for threads available on
     // the system
     public static void main(String[] args) throws Exception {
-
-        switch(args.length) {
-            case 1:
-                serverPortNumber = Integer.parseInt(args[0]);
-                break;
-            default:
+        switch (args.length) {
+        case 3:
+            HOST_NAME = args[0];
+            SERVER_PORT_NUMBER = Integer.parseInt(args[1]);
+            TOTAL_NUMBER_OF_RUNS = Integer.parseInt(args[2]);
+            break;
+        case 2:
+            HOST_NAME = args[0];
+            SERVER_PORT_NUMBER = Integer.parseInt(args[1]);
+            break;
+        default:
+            System.out.println("Running with default variables");
         }
 
         final Pattern NUMBER_COMPARATOR_PATTERN = Pattern.compile("(\\D*)(\\d*)");
@@ -102,11 +101,13 @@ public class Server implements Serializable {
         int rowSize = 3;
         int colSize = 3;
         // Let 1 thread handle the IO requests
-        // When running multiple producers, multiple copies of the same file will be added to the queue
+        // When running multiple producers, multiple copies of the same file will be
+        // added to the queue
         int numberOfProducers = 1;
         // int numberOfConsumers = 3;
-        int totalNumberOfThreads = numberOfProducers /*+ numberOfConsumers*/;
+        int totalNumberOfThreads = numberOfProducers /* + numberOfConsumers */;
         int totalNumberOfImages = rowSize * colSize * 10;
+        boolean showAllOutput = false;
 
         // Used to store the results of the denoising
         HashMap<Integer, TreeMap<String, Long>> statisticsMap = new HashMap<>();
@@ -121,8 +122,7 @@ public class Server implements Serializable {
         FileUtility fileHelper = new FileUtility();
 
         // Setup the server
-        System.out.println("Setting up server");
-        serverSetup();
+        serverSetup(HOST_NAME);
 
         fileHelper.unzip(ZIP_SOURCE, ZIP_DESTINATION, false);
 
@@ -132,16 +132,17 @@ public class Server implements Serializable {
         // Outer loop for running the test multiple times.
         // The outer loop is placed here, because we are only measuring the time it
         // takes to denoise the image.
-        for (int i = 0; i < numberOfRuns; i++) {
-            pathsQueue = new LinkedBlockingQueue<>(totalNumberOfImages);
+        for (CURRENT_RUN_NUMBER = 0; CURRENT_RUN_NUMBER < TOTAL_NUMBER_OF_RUNS; CURRENT_RUN_NUMBER++) {
+            SERVER_IS_READY = false;
+            PATH_QUEUE = new LinkedBlockingQueue<>(totalNumberOfImages);
 
             ExecutorService executorService = Executors.newFixedThreadPool(numberOfProducers);
-            System.out.println("Currently on run " + (i + 1));
+            System.out.println("Currently on run " + (CURRENT_RUN_NUMBER + 1));
 
             List<Producer> producerList = new ArrayList<>();
             // Spawn the number of producers
             for (int j = 0; j < numberOfProducers; j++) {
-                Producer producer = new Producer(j, SPLITTED_IMAGES_FOLDER, pathsQueue, true);
+                Producer producer = new Producer(j, SPLITTED_IMAGES_FOLDER, PATH_QUEUE, showAllOutput);
                 producerList.add(producer);
             }
 
@@ -160,18 +161,18 @@ public class Server implements Serializable {
                 System.out.println("Executor service has been terminated");
             }
 
-            serverIsReady = true;
             // Wait untill all the images have been denoised
-            while(resultMap.size() != totalNumberOfImages) {
-                System.out.println("Number of items left in queue " + pathsQueue.size());
-                Thread.sleep(10);
+            while (RESULT_MAP.size() != totalNumberOfImages) {
+                // System.out.println("Number of items in the queue " + PATH_QUEUE.size());
+                Thread.sleep(80);
             }
+            totalProcessingTime = System.nanoTime() - startProcessingTime;
 
             // Sort the hashmap
             Map<String, Long> sortedMap = new TreeMap<>(new NumberAwareComparator(NUMBER_COMPARATOR_PATTERN));
-            sortedMap.putAll(resultMap);
+            sortedMap.putAll(RESULT_MAP);
             // Clear the map
-            resultMap.clear();
+            RESULT_MAP.clear();
 
             long totalTimeTaken = 0l;
             String id = "";
@@ -197,7 +198,7 @@ public class Server implements Serializable {
                     new NumberAwareComparator(NUMBER_COMPARATOR_PATTERN));
             sortedSummedResultMap.putAll(summedResultMap);
 
-            statisticsMap.put(i + 1, sortedSummedResultMap);
+            statisticsMap.put(CURRENT_RUN_NUMBER + 1, sortedSummedResultMap);
             System.out.println("Sum of total time taken by threads " + totalTimeTaken + " milliseconds.");
             System.out.println("Total processing time is: "
                     + TimeUnit.MILLISECONDS.convert(totalProcessingTime, TimeUnit.NANOSECONDS) + " milliseconds.");
@@ -223,10 +224,9 @@ public class Server implements Serializable {
         TreeMap<String, Long> sortedSummaryMap = new TreeMap<>(new NumberAwareComparator(NUMBER_COMPARATOR_PATTERN));
         sortedSummaryMap.putAll(summaryMap);
 
+        System.out.println("Average result of " + TOTAL_NUMBER_OF_RUNS + " runs.");
         for (Map.Entry<String, Long> entry : summaryMap.entrySet()) {
-            System.out.println(entry.getKey() + "\t" + (entry.getValue() / numberOfRuns));
+            System.out.println(entry.getKey() + "\t" + (entry.getValue() / TOTAL_NUMBER_OF_RUNS));
         }
-        // Reset server status
-        serverIsReady = false;
     }
 }

@@ -5,6 +5,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
@@ -85,7 +86,12 @@ public class FileUtility {
                             System.out.println("Written: " + entry.getName());
                         }
                     } catch (Exception e) {
-                        System.out.println(e);
+                        // Do not show FileAlreadyExist exception
+                        if (e instanceof FileAlreadyExistsException) {
+
+                        } else {
+                            System.out.println(e);
+                        }
                     }
                 }
             }

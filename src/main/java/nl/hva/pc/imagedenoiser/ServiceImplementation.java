@@ -42,8 +42,6 @@ public class ServiceImplementation extends UnicastRemoteObject implements Servic
 
             e.printStackTrace();
         }
-
-        System.out.println("Done writing data...");
     }
 
     @Override
@@ -75,7 +73,7 @@ public class ServiceImplementation extends UnicastRemoteObject implements Servic
 
     @Override
     public boolean checkIfQueueIsEmpty() throws RemoteException {
-        return Server.pathsQueue.isEmpty();
+        return Server.PATH_QUEUE.isEmpty();
     }
 
     @Override
@@ -100,7 +98,7 @@ public class ServiceImplementation extends UnicastRemoteObject implements Servic
         // Creates a folder for the output
         fileHelper.createFolder(outputPath);
 
-        while (pathToImage.trim() != null || !pathToImage.isEmpty()) {
+        if (pathToImage.trim() != null || !pathToImage.isEmpty()) {
             try {
                 if (showAllOutput) {
                     System.out.println(identifier + " is trying to denoise " + pathToImage);
@@ -160,13 +158,13 @@ public class ServiceImplementation extends UnicastRemoteObject implements Servic
 
     @Override
     public void pushResultToServer(String key, Long value) {
-        Server.resultMap.put(key, value);
+        Server.RESULT_MAP.put(key, value);
     }
 
     @Override
     public String takeItemFromQueue() throws RemoteException {
         try {
-            return Server.pathsQueue.take();
+            return Server.PATH_QUEUE.take();
         } catch (InterruptedException e) {
             // e.printStackTrace();
             System.out.println("Error has occured: " + e);
@@ -182,6 +180,11 @@ public class ServiceImplementation extends UnicastRemoteObject implements Servic
 
     @Override
     public boolean checkServerStatus() throws RemoteException {
-        return Server.serverIsReady;
+        return Server.SERVER_IS_READY;
+    }
+
+    @Override
+    public int getServerRunNumber() throws RemoteException {
+        return Server.CURRENT_RUN_NUMBER;
     }
 }

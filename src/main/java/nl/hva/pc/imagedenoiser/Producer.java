@@ -47,6 +47,7 @@ public class Producer implements Runnable {
             if (showAllOutput) {
                 System.out.println("Added all the items to the queue");   
             }
+            Server.SERVER_IS_READY = true;
         } catch (IOException e) {
             e.printStackTrace();
             System.out.println("Producer " + producerId + " got encountered error " + e);

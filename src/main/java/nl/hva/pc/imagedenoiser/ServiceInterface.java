@@ -74,4 +74,11 @@ public interface ServiceInterface extends Remote {
      * Checks the status of the server to see if it is ready to accept clients.
      */
     boolean checkServerStatus() throws RemoteException;
+
+    /**
+     * Retrieved the current run number of the server
+     * @return current run number
+     * @throws RemoteException
+     */
+    int getServerRunNumber() throws RemoteException;
 }
