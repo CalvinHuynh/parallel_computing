@@ -69,4 +69,9 @@ public interface ServiceInterface extends Remote {
      * @throws RemoteException
      */
     boolean removeDirectoryOrFile(String serverPath) throws RemoteException;
+
+    /**
+     * Checks the status of the server to see if it is ready to accept clients.
+     */
+    boolean checkServerStatus() throws RemoteException;
 }

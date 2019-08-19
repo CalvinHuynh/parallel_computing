@@ -52,7 +52,9 @@ public class Server implements Serializable {
 
     public static final String HOST_NAME = "localhost.localdomain";
     public static final String SERVICE_NAME = "ImageDenoiser";
-    public static final int PORT_NUMBER = 1234;
+    public static boolean serverIsReady = false;
+    public static int serverPortNumber = 1234;
+    public static int numberOfRuns = 2;
     public static LinkedBlockingQueue<String> pathsQueue;
     public static ConcurrentHashMap<String, Long> resultMap = new ConcurrentHashMap<>();
 
@@ -64,7 +66,7 @@ public class Server implements Serializable {
             ServiceImplementation impl = new ServiceImplementation();
     
             // Creates the registry
-            Registry registry = LocateRegistry.createRegistry(Server.PORT_NUMBER);
+            Registry registry = LocateRegistry.createRegistry(Server.serverPortNumber);
 
             // Bind the implementation to the registry
             registry.bind(Server.SERVICE_NAME, impl);
@@ -82,17 +84,23 @@ public class Server implements Serializable {
     // the system
     public static void main(String[] args) throws Exception {
 
+        switch(args.length) {
+            case 1:
+                serverPortNumber = Integer.parseInt(args[0]);
+                break;
+            default:
+        }
+
         final Pattern NUMBER_COMPARATOR_PATTERN = Pattern.compile("(\\D*)(\\d*)");
         final Pattern NUMBERS = Pattern.compile("\\d+");
         final String ZIP_SOURCE = "image_dataset_10.zip";
         final String ZIP_DESTINATION = "resources/";
         final String INPUT_IMAGES_FOLDER = "resources/image_dataset_10/input_images";
         final String SPLITTED_IMAGES_FOLDER = "resources/image_dataset_10/splitted_images";
-        // final String DENOISED_IMAGES_FOLDER = "resources/image_dataset_10/denoised_images";
+        final String DENOISED_IMAGES_FOLDER = "resources/image_dataset_10/denoised_images";
         // rowSize and colSize form the raster to split the images
         int rowSize = 3;
         int colSize = 3;
-        int numberOfRuns = 2;
         // Let 1 thread handle the IO requests
         // When running multiple producers, multiple copies of the same file will be added to the queue
         int numberOfProducers = 1;
@@ -112,13 +120,14 @@ public class Server implements Serializable {
         ImageUtility image = new ImageUtility();
         FileUtility fileHelper = new FileUtility();
 
-        fileHelper.unzip(ZIP_SOURCE, ZIP_DESTINATION, false);
-
-        image.splitImages(INPUT_IMAGES_FOLDER, SPLITTED_IMAGES_FOLDER, rowSize, colSize, false);
-
         // Setup the server
         System.out.println("Setting up server");
         serverSetup();
+
+        fileHelper.unzip(ZIP_SOURCE, ZIP_DESTINATION, false);
+
+        image.splitImages(INPUT_IMAGES_FOLDER, SPLITTED_IMAGES_FOLDER, rowSize, colSize, false);
+        fileHelper.createFolder(DENOISED_IMAGES_FOLDER);
 
         // Outer loop for running the test multiple times.
         // The outer loop is placed here, because we are only measuring the time it
@@ -130,7 +139,6 @@ public class Server implements Serializable {
             System.out.println("Currently on run " + (i + 1));
 
             List<Producer> producerList = new ArrayList<>();
-            // List<CallableDenoiser> consumerList = new ArrayList<>();
             // Spawn the number of producers
             for (int j = 0; j < numberOfProducers; j++) {
                 Producer producer = new Producer(j, SPLITTED_IMAGES_FOLDER, pathsQueue, true);
@@ -143,31 +151,6 @@ public class Server implements Serializable {
             }
             startProcessingTime = System.nanoTime();
 
-            // // Spawn the maxumum number of threads
-            // // If the producer has finished it's task, it will return to the pool and start running
-            // // the callable denoiser task.
-            // for (int k = 0; k < totalNumberOfThreads; k++) {
-            //     CallableDenoiser callableDenoiser = new CallableDenoiser("thread_" + k, pathsQueue,
-            //             DENOISED_IMAGES_FOLDER, false);
-            //     consumerList.add(callableDenoiser);
-            // }
-
-            // // Start all consumers
-            // List<Future<HashMap<String, Long>>> futureHashMaps = executorService.invokeAll(consumerList);
-            // HashMap<String, Long> futuresResolvedMap = new HashMap<>();
-            // for (Future<HashMap<String, Long>> futureHashMap : futureHashMaps) {
-            //     futuresResolvedMap.putAll(futureHashMap.get());
-            // }
-
-            // System.out.println("printing queue");
-            // System.out.println(pathsQueue);
-            // System.out.println("size of the queue is " + pathsQueue.size());
-
-            while(resultMap.size() != totalNumberOfImages) {
-                System.out.println("Number of items in queue is " + pathsQueue.size());
-                System.out.println("Number of key value mapping is " + resultMap.size());
-                Thread.sleep(500);
-            }
             executorService.shutdown();
             if (!executorService.isTerminated()) {
                 System.out.println("Waiting for termination...");
@@ -175,7 +158,13 @@ public class Server implements Serializable {
             }
             if (executorService.isTerminated()) {
                 System.out.println("Executor service has been terminated");
-                totalProcessingTime = System.nanoTime() - startProcessingTime;
+            }
+
+            serverIsReady = true;
+            // Wait untill all the images have been denoised
+            while(resultMap.size() != totalNumberOfImages) {
+                System.out.println("Number of items left in queue " + pathsQueue.size());
+                Thread.sleep(10);
             }
 
             // Sort the hashmap
@@ -234,11 +223,10 @@ public class Server implements Serializable {
         TreeMap<String, Long> sortedSummaryMap = new TreeMap<>(new NumberAwareComparator(NUMBER_COMPARATOR_PATTERN));
         sortedSummaryMap.putAll(summaryMap);
 
-        // String threadForm = numberOfConsumers >= 2 ? "threads" : "thread";
-        // System.out.println("Summarized values from all runs with " + numberOfConsumers + " " +
-        //     threadForm + " are:");
         for (Map.Entry<String, Long> entry : summaryMap.entrySet()) {
             System.out.println(entry.getKey() + "\t" + (entry.getValue() / numberOfRuns));
         }
+        // Reset server status
+        serverIsReady = false;
     }
 }

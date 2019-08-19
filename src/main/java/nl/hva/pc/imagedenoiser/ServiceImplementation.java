@@ -127,7 +127,7 @@ public class ServiceImplementation extends UnicastRemoteObject implements Servic
                     // Stop the stopwatch after writing the image to the output folder
                     long elapsedTime = stopwatch.elapsedTime();
                     if (showAllOutput) {
-                        System.out.println("It took consumer" + identifier + " "
+                        System.out.println("It took consumer " + identifier + " "
                                 + TimeUnit.MILLISECONDS.convert(elapsedTime, TimeUnit.NANOSECONDS)
                                 + " milliseconds to denoise the image " + nameOfImage
                                 + ". Output image has been saved with the name " + outputImageName);
@@ -178,5 +178,10 @@ public class ServiceImplementation extends UnicastRemoteObject implements Servic
     public boolean removeDirectoryOrFile(String serverPath) throws RemoteException {
         File serverPathDirectoryOrFile = new File(serverPath);
 		return serverPathDirectoryOrFile.delete();
+    }
+
+    @Override
+    public boolean checkServerStatus() throws RemoteException {
+        return Server.serverIsReady;
     }
 }
