@@ -92,7 +92,7 @@ public class Server implements Serializable {
 
         final Pattern NUMBER_COMPARATOR_PATTERN = Pattern.compile("(\\D*)(\\d*)");
         final Pattern NUMBERS = Pattern.compile("\\d+");
-        final String ZIP_SOURCE = "image_dataset_10.zip";
+        final String ZIP_SOURCE = "image_dataset.zip";
         final String ZIP_DESTINATION = "resources/";
         final String INPUT_IMAGES_FOLDER = "resources/image_dataset_10/input_images";
         final String SPLITTED_IMAGES_FOLDER = "resources/image_dataset_10/splitted_images";

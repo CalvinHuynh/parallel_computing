@@ -31,10 +31,11 @@ public class Client {
 		boolean showAllOutput = false;
 
 		switch (args.length) {
-		case 3:
+		case 4:
 			clientIdentifier = args[0];
-			serverOutputPath = args[1];
-			clientPath = args[2];
+			clientPath = args[1];
+			serverResourcesPath = args[2];
+			serverOutputPath = args[3];
 			break;
 		case 1:
 			clientIdentifier = args[0];
